@@ -1,0 +1,20 @@
+:root{color-scheme:dark;--gold:#dfbd7f;--line:#6a5c4e;--ink:#19212a}*{box-sizing:border-box}
+body{margin:0;background:#171b21;color:#f0e6d1;font:15px/1.55 "Microsoft YaHei",sans-serif}
+main{max-width:1012px;margin:auto;padding:30px clamp(14px,4vw,48px)}
+header,.layout,.sources,.modes,.legend{display:flex}header,.legend{align-items:center;justify-content:space-between}
+header{border-bottom:3px double var(--line);padding:0 0 14px}h1,h2{font-family:SimSun,serif;margin:4px 0;line-height:1.2}h1{font-size:34px}
+small,.legend span{font:700 12px/1.5 "Microsoft YaHei",sans-serif;letter-spacing:.08em;color:var(--gold)}
+a{color:#e5ceb0;text-underline-offset:4px}.sources,.modes{flex-wrap:wrap;gap:5px}.sources{margin:18px 0}
+button{font:inherit;cursor:pointer;color:#d6cec0;border:1px solid var(--line);background:#242830;padding:5px 12px}
+button:hover,button:focus-visible,a:focus-visible{outline:2px solid #bba77b;outline-offset:1px}
+button[aria-pressed=true]{color:#fff0cd;background:#494038;border-color:#d3af75}
+.layout{gap:16px;align-items:stretch}.list,.folio{min-width:0;border:1px solid var(--line);background:#22282e;padding:22px}
+.list{flex:1.4}.folio{flex:.8;text-align:center;background:#20242a;border-top:3px double #ba9e69}
+.list h2{font-size:26px;margin:5px 0 14px}.modes button{font-size:13px}
+p{font-size:13px;color:#c3baab;margin:10px 0 18px}#cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#cards button{display:flex;align-items:center;text-align:left;padding:5px;gap:9px;min-height:60px}
+#cards canvas{width:48px;height:48px;flex:none}canvas{image-rendering:pixelated}
+#cards span{min-width:0}#cards b,#cards small{display:block}#cards b{font:700 14px/1.4 SimSun,serif}
+#illustration{display:block;width:min(100%,256px);height:auto;margin:14px auto;border:1px solid #a88b67;box-shadow:0 0 0 3px #12171c}
+.legend{justify-content:center;gap:10px}.legend span{border:1px solid #8f795d;padding:2px 5px}.legend h2{font-size:22px}
+.folio p{margin:9px 0 0}@media(max-width:700px){.layout{flex-direction:column}.folio{order:-1}#illustration{width:128px}.list,.folio{padding:14px}main{padding-top:16px}.sources{margin:10px 0}.sources button{padding:3px 8px}}

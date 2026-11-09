@@ -1,0 +1,109 @@
+/* Front-of-house screens reuse the iron, parchment and copper of the battle HUD. */
+#lobby {
+  --vault-panel:#211e27;
+  --vault-line:#514854;
+  --vault-gold:#d1ab7a;
+  margin:24px 0 34px;
+  padding:clamp(14px,2.5vw,28px);
+  border:1px solid var(--vault-line);
+  box-shadow:inset 0 0 0 3px #19161e,0 0 0 2px #0f0e13;
+  background:#1c1921;
+  color:#e3d8cb;
+}
+#lobby[hidden] {display:none}
+#lobby .screen-head {margin-bottom:18px;}
+#lobby .screen-head small {
+  color:#bd9874;
+  font:600 11px/1.5 Consolas,monospace;
+  letter-spacing:.16em;
+}
+#lobby h1 {
+  font:700 clamp(28px,3.7vw,50px)/1.28 "SimSun","Songti SC",serif;
+  color:#f2d6a6;
+  letter-spacing:.09em;
+  text-shadow:2px 2px #352933;
+  margin:3px 0 7px;
+}
+#lobby .screen-head p,.choice p {color:#c7b9bf;line-height:1.65}
+#lobby .title-art {
+  display:block;
+  width:100%;
+  height:auto;
+  image-rendering:pixelated;
+  background:#292534;
+  border:1px solid #77656a;
+  box-shadow:0 0 0 2px #121016;
+}
+#lobby .actions,#lobby .top-actions {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+#lobby .actions {margin-top:20px}
+#lobby .actions button,#lobby .top-actions button {
+  font:600 15px/1.3 Consolas,"SimSun",monospace;
+  min-height:38px;
+  padding:8px 18px;
+  background:#2f2934;
+  color:#d5c6bb;
+  border:2px solid;
+  border-color:#665966 #2a242d #2a242d #665966;
+  box-shadow:0 0 0 1px #110f14;
+}
+#lobby .actions button.primary,#lobby .top-actions button.primary {
+  background:#594333;
+  color:#fff0c9;
+  border-color:#d0aa75 #7b6047 #7b6047 #d0aa75;
+}
+#lobby .actions button:hover,#lobby .top-actions button:hover {
+  background:#443944;
+  color:#ffdfae;
+}
+#lobby .actions button.primary:hover,#lobby .top-actions button.primary:hover {background:#624b37}
+#lobby button:focus-visible {
+  outline:2px solid #f3c888;
+  outline-offset:3px;
+}
+#lobby .choices {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));
+  gap:14px;
+}
+#lobby .choice {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  padding:13px;
+  text-align:left;
+  color:#e4d5c6;
+  background:var(--vault-panel);
+  border:2px solid;
+  border-color:#635764 #322b34 #322b34 #635764;
+  box-shadow:inset 0 0 0 1px #2a232e,0 0 0 1px #100e13;
+}
+#lobby .choice:hover,#lobby .choice[aria-pressed=true],#lobby .choice.selected {
+  border-color:#be9b6f #776048 #776048 #be9b6f;
+  background:#322931;
+}
+#lobby .choice canvas {
+  display:block;
+  margin:0 0 12px;
+  width:100%;
+  height:auto;
+  max-height:180px;
+  object-fit:contain;
+  background:#22212e;
+  image-rendering:pixelated;
+  border:1px solid #4d424f;
+}
+#lobby .choice h3 {color:#ebc897;font:700 20px/1.45 "SimSun",serif}
+#lobby .choice p {margin-top:6px;font-size:14px}
+@media(max-width:620px){
+  #lobby {margin-top:14px;padding:12px}
+  #lobby .choices {grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:10px}
+  #lobby .choice {padding:9px}
+  #lobby .choice canvas {max-height:108px}
+  #lobby .actions button,#lobby .top-actions button {padding:7px 11px}
+  #lobby .screen-head {margin-bottom:12px}
+}

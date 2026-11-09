@@ -1,0 +1,128 @@
+#game-stage #lobby:has(.expedition-report){padding:12px 15px;overflow:hidden}
+#game-panel:has(.expedition-report){padding:14px;height:610px;overflow:hidden}
+#game-panel:has(.expedition-report)>#panel-body{height:100%}
+#game-panel:has(.expedition-report)>#close-panel{position:absolute;inset:18px 18px auto auto}
+#panel-body .expedition-report .report-detail p{margin:5px 0;font-size:13px;line-height:1.55}
+.expedition-report{
+  --report-paper:#efd9ac;--report-text:#d7c9c0;--report-muted:#b3a5ac;--report-rule:#665560;
+  display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px;
+  width:100%;height:100%;min-height:0;color:var(--report-text);font-family:Consolas,SimSun,monospace;
+}
+.expedition-report small{font:600 12px/1.4 Consolas,SimSun,monospace;letter-spacing:.06em;color:var(--report-muted)}
+.expedition-report .report-banner{
+  display:grid;grid-template-columns:minmax(205px,.9fr) minmax(265px,1.6fr) minmax(240px,1fr);
+  align-items:center;height:96px;min-height:0;padding:0 0 0 17px;gap:16px;overflow:hidden;
+  border:2px solid;border-color:#907b68 #473743 #473743 #907b68;
+  background:linear-gradient(104deg,#3a2e35,#312b36 64%,#262631);box-shadow:inset 0 0 0 2px #251d26;
+}
+.report-heading{position:relative;z-index:1}.report-heading>small{color:#d6ab77}
+:is(#lobby,#game-panel) .expedition-report .report-heading h1{font-size:29px;line-height:1;margin:4px 0;letter-spacing:0}
+.report-heading h1 canvas{height:31px;width:auto!important;object-fit:contain;object-position:left}
+.report-heading>b{color:var(--report-paper);font:700 16px/1.35 SimSun,serif}
+.report-ending{margin:0;color:#d0bfb7;font-size:14px;line-height:1.65}
+.report-story{display:grid;gap:4px}.report-route{color:#f1d298;font:700 14px/1.35 Consolas,SimSun,monospace}
+.report-banner>canvas{width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.report-metrics{display:grid;grid-template-columns:1fr 1.05fr 1.35fr 1.1fr .8fr;gap:5px}
+.report-metric{
+  display:grid;grid-template-columns:auto 1fr;align-items:center;justify-content:start;column-gap:10px;
+  padding:7px 11px;background:#29242c;border:1px solid #60515d;min-height:55px;
+}
+.report-metric>span{color:#c8b5a4;font-size:13px}.report-metric b{color:var(--report-paper);font-size:20px;line-height:1}
+.report-metric small{grid-column:1/-1;font-size:11px;line-height:1.3}
+.report-layout{
+  display:grid;grid-template-columns:minmax(185px,.8fr) minmax(350px,1.8fr) minmax(265px,1.05fr);gap:9px;min-height:0;
+}
+.report-layout>section{display:flex;flex-direction:column;min-width:0;min-height:0;padding:11px;background:#26232b;border:1px solid #675863;box-shadow:inset 0 0 0 2px #211d26}
+.report-section-title{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:7px}
+.report-layout h2{font:700 18px/1.4 SimSun,serif;letter-spacing:.05em;color:var(--report-paper);margin:0}
+.report-section-title small{font-size:11px}
+.report-room-list{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0}
+:is(#lobby,#game-panel) .expedition-report .report-room{
+  display:grid;gap:5px;text-align:left;background:#302a33;min-height:48px;color:#e6d7c8;
+  padding:6px 8px;border:1px solid #675865;box-shadow:inset 2px 0 #554654;
+}
+:is(#lobby,#game-panel) .expedition-report .report-room[aria-pressed=true]{box-shadow:inset 3px 0 #deb37b;background:#483832;border-color:#a38566}
+.report-room b{font-size:14px;line-height:1.25}.report-room span{font-size:11px;color:#b9aeb3;line-height:1.3}
+.report-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(75px,1fr);gap:6px;min-height:0;overflow:auto;flex:1}
+:is(#lobby,#game-panel) .expedition-report .report-tile{
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(34px,1fr) auto auto;
+  justify-items:center;align-content:center;gap:2px;min-width:0;height:100%;max-height:150px;padding:5px;
+  border:1px solid #635764;background:#302a34;box-shadow:inset 0 -2px var(--drop-color);
+}
+:is(#lobby,#game-panel) .expedition-report .report-tile:hover,:is(#lobby,#game-panel) .expedition-report .report-tile[aria-pressed=true]{
+  border-color:var(--drop-color);background:#40353a;box-shadow:inset 0 -2px var(--drop-color),inset 0 0 0 1px #4f4047;
+}
+.report-tile canvas{align-self:center;max-width:100%;max-height:100%;width:72px;height:68px;object-fit:contain;image-rendering:pixelated}
+.report-tile b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#eadfce;font-size:12px;line-height:1.3}
+.report-tile span{color:var(--drop-color);font-size:10px;line-height:1.2;letter-spacing:.08em}
+.report-tiles:has(.report-tile:first-child:nth-last-child(-n+2)){grid-template-columns:repeat(auto-fit,minmax(145px,1fr));grid-auto-rows:auto;align-content:center;flex:1}
+:is(#lobby,#game-panel) .expedition-report .report-tiles:has(.report-tile:first-child:nth-last-child(-n+2)) .report-tile{height:150px;gap:3px;padding:9px}
+.report-tiles:has(.report-tile:first-child:nth-last-child(-n+2)) .report-tile canvas{width:105px;height:86px}
+.report-pager{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:auto;padding-top:6px;color:#b6a8ac}
+.report-pager:empty{display:none}
+:is(#lobby,#game-panel) .expedition-report .report-pager button{font-size:12px;min-height:26px;padding:2px 9px}
+.report-detail{overflow:auto;scrollbar-color:#786456 #29232c}
+.report-item-heading{display:grid;grid-template-columns:65px minmax(0,1fr);align-items:center;gap:10px;margin:11px 0 6px}
+.report-item-heading canvas{width:65px;height:58px;object-fit:contain;image-rendering:pixelated}
+.report-detail[data-kind=summon] .report-item-heading{grid-template-columns:minmax(82px,1.35fr) minmax(67px,1fr)}
+.report-detail[data-kind=summon] .report-item-heading canvas{width:100%;height:auto;max-height:116px}
+.report-item-heading h3,.report-empty h3{font:700 17px/1.3 SimSun,serif;color:var(--report-paper);margin:2px 0 4px}
+.report-location{display:inline-block;color:#b7cbae;font-size:12px}
+.report-detail p,.report-empty{font-size:13px;line-height:1.55;color:#c0b4b9;margin:5px 0}
+.report-detail .report-source{font-size:12px;color:#d9c5a9}
+.report-stats{padding:0;margin:5px 0;list-style:none}
+.report-stats li{display:grid;gap:2px;padding:5px 0;border-top:1px solid #534651}
+.report-stats li span{font-size:11px;color:#b9a9b4}.report-stats li b{color:#e7d7be;font-weight:600;font-size:13px}
+:is(#lobby,#game-panel) .expedition-report .report-inspect{margin-top:auto;min-height:30px;font-size:12px}
+.report-layout:has(.report-detail[hidden]){grid-template-columns:minmax(185px,.8fr) minmax(0,2.85fr)}
+.report-gallery:has(.report-empty) .report-tiles{display:flex;align-items:center;flex:1}
+.report-tiles>.report-empty{display:flex;align-items:center;gap:20px;width:100%;padding:18px;background:#2c2830}
+.report-empty canvas{width:145px;height:auto;image-rendering:pixelated}
+.report-nav{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding-top:5px;border-top:3px double var(--report-rule)}
+:is(#lobby,#game-panel) .expedition-report .report-nav button{min-height:33px;min-width:100px;padding:4px 10px}
+.expedition-report button:focus-visible{outline:2px solid #f0c98b;outline-offset:1px}
+
+#game-stage #lobby:has(.campaign-defeat){padding:16px;overflow:hidden}
+.campaign-defeat{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;color:#dfd2c3;font-family:Consolas,SimSun,serif}
+.defeat-title{padding:12px 18px;background:linear-gradient(100deg,#493134,#2d2630 78%);border:1px solid #896860;border-left:4px solid #b87f70}
+.defeat-title small{color:#d4ae89}.defeat-title h1{margin:3px 0!important;line-height:1}
+.defeat-title h1:focus{outline:none}
+.defeat-title h1 canvas{height:36px;width:auto!important}.defeat-title>b{color:#e5caa8;font-size:16px}
+.defeat-layout{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(310px,1fr);gap:12px;min-height:0}
+.defeat-scene{margin:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background:#201e27;border:2px solid #64525a}
+.defeat-scene>canvas{display:block;width:100%;height:auto;max-height:calc(100% - 52px);object-fit:contain;image-rendering:pixelated}
+.defeat-scene figcaption{display:flex;align-items:center;gap:10px;padding:12px;color:#dcc6af;border-top:1px solid #66535c}
+.defeat-scene figcaption small{color:#cda795}.defeat-scene figcaption span{margin-left:auto;font-size:13px}
+.defeat-loot{min-height:0;display:flex;flex-direction:column;gap:10px}
+.defeat-loot section{display:grid;align-content:start;gap:8px;padding:13px 15px;background:#2a242d;border:1px solid #67565f}
+.defeat-loot h2{margin:0;font:700 17px/1.4 SimSun,serif}.defeat-loot .defeat-income{border-left:3px solid #8fae96}
+.defeat-income h2{color:#becfaf}.defeat-income span,.defeat-controls span{font-size:13px;color:#c4b6b8}
+.defeat-loot .defeat-lost{flex:1;min-height:0;overflow:auto;border-left:3px solid #b78a70}
+.defeat-lost h2{color:#d5b098}.defeat-drop{display:flex;align-items:center;gap:10px;border-top:1px solid #574b54;padding-top:5px}
+.defeat-drop canvas{width:52px;height:43px;object-fit:contain;image-rendering:pixelated}.defeat-drop small{display:block;color:#bdaaa9}
+.defeat-controls{display:flex;align-items:center;gap:10px;padding-top:9px;border-top:3px double #705f62}
+.defeat-controls>div{margin-right:auto;display:grid;gap:3px}
+
+/* Rift checkpoints keep the loot list scrollable while the onward route stays under the player's hand. */
+#game-stage #lobby:has(.rift-report){overflow:hidden;padding:13px 17px}
+.rift-report{height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px;color:#e4d6c4}
+.rift-report>header{display:grid;height:auto;min-height:100px;grid-template-columns:130px 1fr minmax(270px,.72fr);align-items:center;gap:20px;padding:6px 20px 6px 8px;border:3px double #8a7462;background:linear-gradient(95deg,#332832,#3d323c 65%,#292832)}
+.rift-report>header canvas{max-width:100%;image-rendering:pixelated}
+.rift-report h1 canvas{height:35px;width:auto!important}
+.rift-report>header b,.rift-gallery h2{font:700 19px/1.3 SimSun,serif;color:#efd8b3}
+.rift-report small,.rift-note span,.rift-metrics span{font:13px/1.45 Consolas,SimSun,monospace;color:#c2b0a8}
+.rift-note{display:grid;gap:5px;border-left:1px solid #796758;padding:0 18px}
+.rift-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rift-metrics>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px;padding:10px 13px;background:#2e2931;border:1px solid #695962}
+.rift-metrics strong{font:700 22px/1.1 Consolas,SimSun,monospace;color:#f5deb5}
+.rift-metrics span{grid-column:1/-1;font-size:12px}
+.rift-gallery{overflow:auto;min-height:0;padding:13px 15px;background:#26232c;border:1px solid #685961;scrollbar-color:#786456 #29232c}
+.rift-gallery-head,.rift-gallery-head nav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rift-gallery h2{margin:0 0 10px}
+.rift-drops{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+#lobby .rift-drop{display:grid;grid-template-columns:52px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:9px;text-align:left;min-height:69px;padding:7px;background:#302a32;border:1px solid #73626b;box-shadow:inset 0 -2px var(--drop-color)}
+.rift-drop canvas{grid-row:span 2;width:52px;height:52px;image-rendering:pixelated}.rift-drop b{color:#f0decb;font-size:15px}.rift-drop small{font-size:11px;color:var(--drop-color)}
+.rift-affixes{grid-column:1/-1;align-self:start;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:34px;margin-top:5px;padding-top:3px;border-top:1px solid #554953;color:#c5b9b4;font:12px/1.4 Consolas,SimSun,monospace}
+#lobby .rift-drop:hover,#lobby .rift-drop:focus-visible{border-color:var(--drop-color);background:#483c41}
+.rift-drop[aria-disabled=true]{opacity:.65}
+#game-stage #lobby .rift-report .actions{justify-content:flex-end;margin:0;padding-top:8px;border-top:3px double #695861}

@@ -1,0 +1,87 @@
+/* The artwork and the controls use the same 576 × 234 map coordinates. */
+.expedition-atlas{--map-paper:#e5cfac;container-type:inline-size;color:var(--map-paper)}
+.expedition-atlas .atlas-head{margin:0 0 12px;min-height:55px}
+.world-picker{margin-left:auto;margin-right:12px;display:grid;gap:3px;padding:6px 11px;background:#2c2630;border-left:3px solid #947d60}
+.world-picker label{display:flex;align-items:center;gap:9px;color:#e0cba7;font-weight:bold}
+.world-picker select{min-width:146px;max-width:280px;background:#211d25;color:#efd7b2;border:1px solid #8b765b;font:inherit;padding:3px}
+.world-picker>span{color:#c3b8aa;font:12px/1.4 Consolas,SimSun,serif}
+.atlas-spread{display:grid;grid-template-columns:minmax(0,3.15fr) minmax(210px,1fr);gap:14px;align-items:stretch;min-width:0}
+.atlas-plate{isolation:isolate;position:relative;align-self:center;min-width:0;overflow:hidden;padding:0}
+.atlas-plate canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.atlas-hit-layer{position:absolute;inset:0;margin:0;padding:0;pointer-events:none}
+:is(#lobby,#game-panel) button.atlas-hotspot{
+  position:absolute;display:block;pointer-events:auto;touch-action:manipulation;cursor:pointer;
+  padding:0;border:0;box-shadow:none;border-radius:0;color:#e4d8c2;background:transparent;
+  font:600 14px/1.2 Consolas,SimSun,monospace;text-align:center;
+}
+:is(#lobby,#game-panel) button.atlas-hotspot:hover{background:transparent;border:0}
+:is(#lobby,#game-panel) button.atlas-hotspot:focus-visible{outline:2px dashed #f9d799;outline-offset:-3px}
+.atlas-landmark{width:18.8%;height:38%;transform:translate(-50%,-72%)}
+.atlas-plaque,.atlas-stage-caption{
+  position:absolute;left:50%;transform:translateX(-50%);box-sizing:border-box;white-space:nowrap;
+  text-shadow:1px 1px #19151b;
+}
+.atlas-plaque{
+  bottom:0;padding:3px 8px;background:#24212c;border:1px solid #80716f;
+  box-shadow:0 2px #201a22;font-size:12px;color:#d0c2ad;
+}
+.atlas-landmark[data-locked=true] .atlas-plaque{color:#ac9fa9;border-color:#665862}
+.atlas-landmark[data-current=true] .atlas-plaque,.atlas-landmark:is(:hover,:focus-visible) .atlas-plaque{
+  background:#43352f;border-color:#c7a16e;color:#ffdda2;
+}
+.atlas-stage{width:32.3%;height:23%;transform:translate(-50%,-25%)}
+.atlas-stage-caption{
+  top:47%;display:grid;gap:2px;justify-items:center;color:#d3c7c1;font-size:12px;
+}
+.atlas-stage-caption b{
+  padding:2px 5px;background:#25212b;border:1px solid #685963;
+  font-weight:700;color:#ecdfc9;line-height:1.18;
+}
+.atlas-stage-caption>span{color:#baafb8;font-size:11px;line-height:1.1}
+.atlas-stage[data-status=frontier] .atlas-stage-caption>span{color:#f3ce88}
+.atlas-stage[data-status=cleared] .atlas-stage-caption>span{color:#a7c5ac}
+.atlas-stage[data-status=locked] .atlas-stage-caption b{color:#b9aeb5}
+.atlas-stage[data-inspect=true] .atlas-stage-caption b,.atlas-stage:is(:hover,:focus-visible) .atlas-stage-caption b{
+  border-color:#d9b581;color:#ffe4ad;background:#3e342e;
+}
+.atlas-folio{
+  display:grid;align-content:center;gap:13px;min-width:0;padding:16px;
+  background:#28232c;border:2px solid;border-color:#76616c #39303a #39303a #76616c;
+  box-shadow:inset 0 0 0 2px #211b25;
+}
+.atlas-folio h2{margin:4px 0 7px;color:#efd3a2;font:700 22px/1.3 SimSun,serif}
+.atlas-folio h3{margin:4px 0;color:#ebd4ab;font:700 18px/1.3 SimSun,serif}
+.atlas-folio p{margin:0;color:#c8bcc1;font-size:14px;line-height:1.65}
+.atlas-progress{display:block;margin-top:7px;color:#b6c6ac;font:600 12px/1.45 Consolas,SimSun,monospace}
+.atlas-room-detail{border-top:3px double #695766;padding-top:10px}
+.atlas-room-detail[data-status=locked] .eyebrow{color:#b5a6b4}
+.atlas-room-detail[data-status=cleared] .eyebrow{color:#a9bfaa}
+.atlas-folio .atlas-hint{color:#dfc69e;margin-top:6px;font-size:13px;line-height:1.4}
+#game-panel:has(.expedition-atlas){width:min(94%,1080px)}
+#game-panel .atlas-spread{grid-template-columns:minmax(0,2.9fr) minmax(190px,1fr);gap:10px}
+#game-panel .atlas-head{padding-right:45px}
+.atlas-stage[aria-current=location] .atlas-stage-caption>span{color:#f6d591}
+.field-map-actions{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:9px;border-top:3px double #705e64}
+.field-map-actions>span{margin-right:auto;color:#e7c999;font:600 14px/1.4 SimSun,serif}
+#game-panel:has(.retreat-review){width:550px;padding:14px;overflow:auto}
+#game-panel:has(.retreat-review)>#close-panel{position:absolute;inset:20px 20px auto auto}
+.retreat-review{display:grid;gap:10px;color:#ded2c4}
+.retreat-review header{height:auto;min-height:96px;display:flex;align-items:center;justify-content:flex-start;gap:16px;background:#302a34;border:1px solid #796858;padding:10px 45px 10px 10px}
+.retreat-review header>canvas{width:112px;height:76px;image-rendering:pixelated}
+.retreat-review header b{color:#e5c79e}.retreat-review h1{margin:4px 0!important;line-height:1}
+.retreat-review h1 canvas{width:auto!important;height:34px;image-rendering:pixelated}
+.retreat-review section{padding:10px 12px;border:1px solid #554953;box-shadow:inset 3px 0 var(--accent);background:#27232c}
+.retreat-earned{--accent:#84ada0;display:grid;gap:5px}.retreat-earned small{color:#a7cbb5}
+.retreat-pending{--accent:#bd8866;display:flex;align-items:center;gap:12px}
+.retreat-pending>div{display:grid;gap:5px}.retreat-pending canvas{width:48px;height:48px;image-rendering:pixelated}
+.retreat-review section b{font-size:17px}.retreat-review section span{font-size:13px;color:#c5b8ba}
+#panel-body .retreat-review p{margin:0;font-size:14px;color:#dfcfb9}
+.retreat-review footer{display:flex;justify-content:flex-end;gap:10px;padding-top:8px;border-top:3px double #705e64}
+@container (max-width:700px){
+  .atlas-spread,#game-panel .atlas-spread{grid-template-columns:1fr}
+  .atlas-folio{grid-template-columns:1fr 1fr;gap:12px;padding:10px 12px}
+  .atlas-room-detail{border-top:0;border-left:3px double #695766;padding:0 0 0 10px}
+  .atlas-folio h2{font-size:18px}.atlas-folio h3{font-size:16px}
+  .atlas-folio p{font-size:12px}.atlas-stage-caption b,.atlas-plaque{font-size:11px}
+  .atlas-stage-caption>span{font-size:10px}
+}

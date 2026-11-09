@@ -1,0 +1,32 @@
+#game-panel:has(.shared-stash){height:616px;padding:12px;overflow:hidden}
+#game-panel:has(.shared-stash)>#panel-body{height:100%}
+#game-panel:has(.shared-stash)>#close-panel{display:none}
+.shared-stash{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) 94px 22px;gap:8px;color:#e9d9c1;font:15px/1.35 Consolas,SimSun,monospace}
+.stash-header,.stash-pane,.stash-detail{border:1px solid #796855;background:#26232a;box-shadow:inset 0 0 0 2px #1d1920}
+.stash-header{display:flex;align-items:center;gap:14px;padding:7px 12px;border:3px double #92785c;background:linear-gradient(100deg,#3f3233,#29262e)}
+.stash-header>div:first-child{margin-right:auto;display:flex;align-items:baseline;gap:16px}
+.stash-header h1{margin:0;line-height:1}.stash-header h1 canvas{width:auto!important;height:31px}
+.stash-header span,.stash-pane-head span,.stash-pager,.stash-detail small{color:#cdbba9;font-size:13px}
+.stash-header>b{color:#f0ce8f;font-size:15px}
+.stash-panes{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0}
+.stash-pane{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:6px;min-width:0;min-height:0;padding:9px 11px}
+.stash-pane-head,.stash-pager{display:flex;align-items:center;justify-content:space-between}
+.stash-pane h2,.stash-detail h3{margin:0;color:#edd2a5;font:700 19px/1.4 SimSun,serif}
+.stash-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:5px;min-height:0}
+.stash-tile,.stash-empty{position:relative;min-width:0;min-height:0;background:#302a32;border:1px solid #60545f}
+.stash-tile{box-shadow:inset 0 -2px var(--rarity)}
+.stash-tile:has([aria-pressed=true]){background:#453738;border-color:#d2b37d;outline:1px solid #d2b37d}
+#game-panel .shared-stash .stash-select{display:grid;width:100%;height:100%;grid-template-columns:44px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:center;gap:2px;padding:4px 6px 5px;background:transparent;border:0;box-shadow:none;text-align:left}
+.stash-select canvas{width:43px;height:43px;image-rendering:pixelated}
+.stash-select>b{grid-column:1/-1;display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#f0dfcc;font:600 14px/1.35 SimSun,serif}
+.stash-select>small{font-size:11px;color:var(--rarity);align-self:end;margin-bottom:4px}
+#game-panel .shared-stash .stash-move{position:absolute;right:3px;top:3px;width:29px;height:24px;line-height:1;padding:0;font-size:17px}
+.stash-empty{display:grid;place-items:center;background:#25212a;color:#635960;font-size:21px}
+.stash-empty.closed{background:repeating-linear-gradient(135deg,#211e25 0 4px,#252129 4px 6px);color:#463e47}
+#game-panel .shared-stash .stash-pager button{min-width:44px;height:26px;padding:0 10px;font-size:18px;line-height:1}
+.stash-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:13px;padding:8px 14px}
+.stash-detail canvas{width:68px;height:68px;image-rendering:pixelated}
+#panel-body .shared-stash .stash-detail p{margin:3px 0 0;max-height:42px;overflow:auto;color:#d1c2b3;font:13px/1.5 Consolas,SimSun,monospace}
+.stash-detail-action{display:grid;justify-items:center;gap:5px}
+#panel-body .shared-stash .stash-feedback{align-self:center;margin:0;color:#d9c691;font:14px/1.4 SimSun,serif}
+.shared-stash button:focus-visible{outline:2px solid #efc986;outline-offset:0}

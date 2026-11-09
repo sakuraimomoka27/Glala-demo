@@ -1,0 +1,28 @@
+#lobby:has(.atlas-art),#lobby:has(.town-art){padding:clamp(12px,2vw,24px);background:#211d26}
+#lobby button,#game-panel button,#game-dock button{color:#e5d6c0;background:#322c35;border:2px solid;border-color:#776b70 #332b34 #332b34 #776b70;box-shadow:0 0 0 1px #16111a;padding:6px 13px;font:600 14px/1.45 Consolas,SimSun,serif}
+#lobby button:hover:not(:disabled),#game-panel button:hover:not(:disabled),#game-dock button:hover{background:#4a3b39;border-color:#be9e71}
+#lobby button:disabled,#game-panel button:disabled{opacity:.62;cursor:default}
+#lobby button.primary,#game-panel button.primary{background:#594434;color:#ffe9b7;border-color:#d1ae7c #674e40 #674e40 #d1ae7c}
+.eyebrow{display:block;color:#d1ac78;font:600 11px/1.6 Consolas,SimSun,monospace;letter-spacing:.15em}
+.atlas-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.atlas-head h1{margin:0!important}
+.atlas-art,.town-art{display:block;width:100%;background:#292634;border:2px solid #847264;box-shadow:0 0 0 2px #100e13}.atlas-art canvas,.town-art,.glala-portrait,.pixel-heading{display:block;width:100%;height:auto;image-rendering:pixelated}.atlas-nav,.town-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;margin:4px 0 18px}.town-nav{grid-template-columns:repeat(4,1fr)}
+#lobby .atlas-nav button.current,#game-panel .atlas-nav button.current{color:#f6d499;border-bottom-color:#e2b673;background:#4a3b35}.atlas-nav .unexplored{color:#a79ba6!important}
+.region-info{display:grid;grid-template-columns: minmax(180px,0.8fr) minmax(250px,2fr);gap:24px;border-top:3px double #635562;padding-top:15px}
+.region-info h2{font:700 22px/1.5 SimSun,serif;color:#f0cf9f;margin:1px 0 5px}.region-info p,#panel-body p{color:#cbbfc4;line-height:1.7}
+.route-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;align-items:start}
+.route-node{text-align:left;display:grid;gap:3px}.route-node span{font-size:12px;color:#b9aeb6}.route-node.frontier{border-color:#cbab75!important;background:#4d3e35!important}
+.world-return{margin-top:14px}.save-grid .empty-slot{display:grid;place-items:center;min-height:116px;font-size:42px;color:#8e807e}.name-step{margin-top:18px;display:flex;align-items:center;flex-wrap:wrap;gap:14px}.name-step[hidden]{display:none}.name-step input{background:#15131a;color:#f6dfa9;border:2px solid #766574;padding:7px;font:inherit}
+#game-dock{position:sticky;bottom:0;z-index:4;margin:18px auto 0;max-width:760px;display:grid;grid-template-columns:86px minmax(100px,1fr) 86px;align-items:end;gap:8px;filter:drop-shadow(0 3px 3px #070609)}#game-dock[hidden]{display:none}
+.dock-menu[hidden]{visibility:hidden}.dock-menu{display:flex;align-items:center;justify-content:center;gap:5px;background:#28222b;border:3px double #8c7765;padding:8px 5px}
+.orb{position:relative;text-align:center;background:#211c25;border:3px double #9b876f;display:grid;justify-items:center;color:#e7d4b5;font:12px/1.35 Consolas,SimSun,monospace;padding:4px 0 2px}.orb i{--fill:100%;display:block;width:46px;height:42px;clip-path:polygon(26% 0,74% 0,74% 5%,85% 5%,85% 12%,93% 12%,93% 22%,100% 22%,100% 78%,93% 78%,93% 88%,82% 88%,82% 95%,72% 95%,72% 100%,28% 100%,28% 95%,16% 95%,16% 88%,7% 88%,7% 78%,0 78%,0 22%,7% 22%,7% 12%,16% 12%,16% 5%,26% 5%);background:linear-gradient(to top,var(--deep),var(--light) var(--fill),#24212c var(--fill));box-shadow:inset 4px 0 #ffffff12,inset -5px -3px #130d1b65;position:relative}
+.orb i:before{content:"";position:absolute;width:8px;height:3px;left:10px;top:8px;background:#ffeada80}.life-orb{--light:#d9665c;--deep:#752335}.energy-orb{--light:#75c8a5;--deep:#256257}.orb b{font-size:12px}
+.disc-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0}.disc-grid button{display:grid;gap:4px;text-align:left;padding:7px!important;min-height:49px}.disc-grid .active{border-color:#c9a675!important;background:#4d3b35!important}.disc-setup{display:flex;gap:12px;flex-wrap:wrap}.disc-setup select,#panel-body select{background:#302a33;color:#f0ddc6;font:inherit}.echo-list{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.echo-detail{border:1px solid #705e68;padding:12px;margin-top:14px}.echo-detail button{margin:3px}.echo-detail .gear-compare{max-width:450px}
+@media(min-width:850px) and (max-height:820px){
+ #lobby:has(.atlas-art),#lobby:has(.town-art){margin:8px 0;padding:12px}
+ .atlas-head{margin-bottom:6px}.atlas-nav,.town-nav{margin-bottom:8px}.region-info{padding-top:7px;gap:12px}
+ .world-return{margin-top:5px}#game-dock{margin-top:6px}
+}
+#game-panel{max-height:82vh;width:min(94vw,900px);background:#211d26;color:#e5d6c1;border:3px double #b79569;box-shadow:0 12px 55px #08070a;padding:22px}
+#game-panel::backdrop{background:#100d17bd}#close-panel{position:sticky;top:0;float:right;z-index:1}
+#panel-body>h2,#panel-body>h3{color:#e3c190;margin:12px 0 3px}
+@media(max-width:680px){.region-info{grid-template-columns:1fr;gap:10px}.route-list{grid-template-columns:repeat(3,1fr)}#lobby button,#game-panel button,#game-dock button{padding:5px 7px;font-size:12px}.atlas-nav button,.town-nav button{padding:5px 1px!important}#game-dock{grid-template-columns:58px minmax(120px,1fr) 58px;gap:3px}.orb i{width:32px;height:29px}.dock-menu{gap:2px}.orb b{font-size:10px}}

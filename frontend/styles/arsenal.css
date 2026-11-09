@@ -1,0 +1,108 @@
+#game-panel:has(.arsenal){height:660px;padding:0;overflow:hidden;background:#16171d;border:3px double #987f59}
+#game-panel:has(.arsenal)>#panel-body{height:100%;padding:0}
+#game-panel:has(.arsenal)>#close-panel{display:none}
+.arsenal{--br:#574d43;--gold:#e6c68e;--ink:#16171c;background:#191a20;color:#e4dccb;font:14px/1.45 Consolas,"Microsoft YaHei",monospace;text-align:left;position:relative}
+.arsenal *{box-sizing:border-box}.arsenal canvas,.summon-finds canvas,.items .item canvas{image-rendering:pixelated}
+:is(#game-panel,#lobby) .arsenal button{font:inherit;padding:4px 8px;line-height:1.35;border:1px solid #665a4e;box-shadow:inset 0 0 0 1px #242124;color:#e6d5bc;background:#312e30}
+:is(#game-panel,#lobby) .arsenal button.primary{color:#ffe5ad;background:#5a4431;border:2px double #ac8c5c}
+.arsenal button:focus-visible,.arsenal select:focus-visible{outline:2px solid #f0d398;outline-offset:2px}
+.ar-banner,.ar-headrow,.ar-nav{display:flex;align-items:center;gap:10px}.ar-banner{padding:10px 18px;background:linear-gradient(110deg,#373035,#211f24 68%);border-bottom:3px double #79654d}.ar-banner h2{font:700 25px/1.2 SimSun,serif;color:#f1cc94;margin:3px 0}.ar-banner>div:first-child{margin-right:auto}.ar-caption{display:block;color:#bca988;font:12px/1.4 Consolas,"Microsoft YaHei",sans-serif}.ar-layout{display:grid;grid-template-columns:minmax(163px,.78fr) minmax(370px,2.45fr) minmax(205px,1fr);gap:8px;padding:8px}
+.ar-center{display:grid;gap:8px;align-content:start;min-width:0}.ar-rail,.ar-board,.ar-bag,.ar-inspector{padding:10px;background:#212126;border:1px solid var(--br);box-shadow:inset 0 0 0 2px #19191e;min-width:0}
+.ar-sub{font:700 16px/1.4 SimSun,serif;color:var(--gold);margin:3px 0 7px}.ar-headrow{border-bottom:1px solid var(--br);margin-bottom:6px;min-height:25px}.ar-headrow .ar-caption{margin-left:auto}.ar-headrow select{max-width:110px}
+.ar-rail{background:linear-gradient(#29272a,#202127 47%)}.ar-hero{display:block;width:min(100%,136px);height:90px;object-fit:contain;margin:2px auto 3px}
+.ar-rail>h3:not(.ar-sub){font:700 20px SimSun,serif;margin:3px 0;color:#f5dfb9}.ar-role,.ar-lit{color:#95c6ba}.arsenal p,#panel-body .arsenal p{font:13px/1.55 "Microsoft YaHei",sans-serif;color:#c7bcac;margin:5px 0 9px}.ar-rail .ar-sub,.ar-inspector .ar-sub:not(:first-child){border-bottom:1px solid var(--br);padding-bottom:4px;margin-top:7px}
+.ar-help{display:block;font:11px/1.4 "Microsoft YaHei",sans-serif;color:#b6ab9e;margin-top:3px}.ar-numbers{margin:0;font-size:13px}.ar-numbers>div{display:flex;justify-content:space-between;gap:3px;border-bottom:1px solid #35343a;padding:4px 0}.ar-numbers dt{color:#bcb2a5}.ar-numbers dd{margin:0;text-align:right;color:#f3e5c7}.ar-numbers .ar-change{color:#a4dbd0}.ar-boot{display:grid;gap:3px;color:#bba98d;font-size:12px;margin-top:8px}.arsenal select{color:#e8d8bc;background:#29282d;border:1px solid #665b4d;padding:3px}
+.ar-stage{position:relative;isolation:isolate;display:grid;grid-template-columns:1fr 1fr minmax(94px,2.85fr) 1fr 1fr;grid-template-rows:repeat(6,31px);gap:3px;align-items:center;justify-items:center;padding:5px 7px;background:radial-gradient(ellipse at center,#39313b,#22242b 52%,#19191f);border:1px solid #434047;overflow:hidden}
+.ar-stage:before,.ar-stage:after{content:"";position:absolute;z-index:-1;pointer-events:none;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);width:138px;height:138px;border:3px double #6c5c505a}.ar-stage:after{width:197px;height:197px;border:1px solid #77684858}
+:is(#game-panel,#lobby) .arsenal .ar-tile{aspect-ratio:1;padding:0;display:grid;place-items:center;position:relative;border:2px solid var(--tier,#605945);background:linear-gradient(135deg,#26262c,#1b1b22 60%,#342e30);box-shadow:inset 0 0 0 1px #101117,0 1px 0 #111217}
+:is(#game-panel,#lobby) .arsenal .ar-tile.ar-selected{outline:2px solid #e8c481;outline-offset:1px}
+.ar-slot{width:min(100%,54px)}.ar-tile canvas{display:block;width:89%;max-height:100%;height:auto}.ar-tile small{position:absolute;top:1px;left:2px;font:9px/1.1 Consolas,monospace;color:#d5c5a6;background:#23222aaf;z-index:1}
+.ar-ghost{border-style:dashed!important}.ar-ghost-tag{position:absolute;bottom:0;left:0;color:#f9dfa9;background:#544432;font:10px "Microsoft YaHei",sans-serif;padding:1px 3px}.ar-socket{color:#5e584f;font:26px Georgia,serif}.ar-seal{font:10px/1 "Microsoft YaHei",sans-serif;color:#d8e6bd;background:#23403b;position:absolute;right:0;bottom:0;padding:2px}
+:is(#game-panel,#lobby) .arsenal .ar-core{grid-column:3;grid-row:1 / 7;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;padding:0;border:0;background:transparent;box-shadow:none}
+.ar-core canvas{width:100%;max-width:195px;height:auto}.ar-core b{font:700 16px/1.5 SimSun,serif;color:#f8e1b5}.ar-core>small:last-child{color:#bdb09b;font-size:11px}
+.ar-roster{margin-top:6px;display:flex;align-items:stretch;gap:3px}.ar-roster>.ar-caption{align-self:center;font-size:11px;max-width:40px}.ar-roster button{flex:1;min-width:0;display:grid;grid-template-columns:36px auto;align-items:center;text-align:left;column-gap:4px}.ar-roster button canvas{grid-row:span 2;width:36px}.ar-roster span,.ar-roster small{font-size:11px;white-space:nowrap}.ar-roster small{color:#bbac97}
+.ar-bag{padding-top:6px}.ar-items{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}.ar-bag-empty{color:#524c48;display:grid;place-items:center;aspect-ratio:1;border:1px solid #423d3b;background:#1a1b20}.ar-nav{margin-top:8px}.ar-nav>button:last-child{margin-left:auto}
+.ar-inspector{background:linear-gradient(150deg,#2c292b,#1f2025 60%)}.ar-inspector>canvas{max-width:100%;width:auto;height:95px;display:block;margin:3px auto 9px}
+.ar-name{font:700 17px/1.55 SimSun,serif;color:#edd5a3}.ar-line,.ar-lit{font-size:13px;border-top:1px solid #3a383c;padding:4px 0}.ar-item-info .ar-caption{margin-top:3px}.ar-tools{display:flex;flex-wrap:wrap;gap:3px;margin:6px 0}.ar-status{padding:4px 14px 7px;text-align:right;color:#ac9c81;font-size:12px}
+.ar-tip{position:fixed;z-index:20;pointer-events:none;width:min(254px,88vw);max-height:88dvh;overflow:hidden;border:3px double #ae9269;background:#1b1a20;padding:10px;box-shadow:3px 5px 14px #08090ec4;color:#dfd3bc}.ar-tip[hidden]{display:none}.ar-tip .ar-caption{margin-top:5px}.ar-tip .ar-numbers>div{padding:2px 0}
+.summon-finds>div{display:flex;align-items:center;gap:10px;background:#343039;border:1px solid #ab8861;color:#f7d795;padding:6px}.summon-finds canvas{width:75px;height:auto}.items .item canvas{width:42px;height:42px}#machine-drop{border:2px double #c89f65;color:#ffe4ad;background:#403238}
+.ar-roster{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.ar-roster>.ar-caption{display:block;grid-column:1/-1;max-width:none}
+.ar-roster button{grid-template-columns:minmax(23px,34px) minmax(0,1fr);padding-inline:3px!important}
+.ar-roster button canvas{width:100%;height:auto}
+.ar-roster button span{white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+.ar-roster .ar-locked canvas{filter:saturate(.35);opacity:.75}
+.ar-roster .ar-picked{outline:2px solid #d7b87a;outline-offset:-2px}
+.ar-muted{color:#a69e98}.ar-numbers dd{overflow-wrap:anywhere}
+.ar-numbers .ar-prob{display:block;grid-column:1/-1}.ar-prob dd{text-align:left;font-size:12px}
+.ar-machine-info .ar-caption{margin:2px 0 5px}.ar-machine-info>.ar-sub{font-size:14px}
+.arsenal{height:100%;display:grid;grid-template-rows:54px minmax(0,1fr) 24px}
+.ar-layout{grid-template-columns:228px minmax(0,1fr) 284px;min-height:0}
+.ar-rail,.ar-inspector{overflow:auto;overscroll-behavior:contain;scrollbar-color:#75675a #25242b}
+.ar-center{min-height:0;grid-template-rows:285px minmax(0,1fr);align-content:stretch;gap:6px}
+.ar-board{display:grid;grid-template-rows:22px minmax(0,1fr) 44px;gap:4px;padding:7px 9px}
+.ar-headrow{margin:0;min-height:0}.ar-headrow .ar-sub{margin:0}
+.ar-stage{grid-template-rows:repeat(6,minmax(0,1fr));padding:3px 12px}
+.ar-roster{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin:0;align-items:stretch}
+.ar-roster>.ar-caption{display:none}
+.ar-roster button{grid-template-columns:24px minmax(0,1fr);row-gap:0;line-height:1.1!important}
+.ar-roster button span,.ar-roster button small{font-size:10px}
+.ar-bag{min-height:0;display:grid;grid-template-rows:20px 24px minmax(0,1fr) 25px;gap:3px;padding:5px 9px}
+.ar-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
+.ar-filters select{min-width:0;padding:1px 3px;font-size:12px}
+.ar-items{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));max-width:530px;width:100%;height:100%;min-height:0;justify-self:center;gap:2px}
+.ar-items>.ar-tile,.ar-items>.ar-bag-empty{height:100%;width:auto;max-width:100%;justify-self:center;align-self:center;min-height:0}
+.ar-nav{margin:0;gap:6px}.ar-nav button{padding-block:1px!important}
+.ar-status{padding:3px 12px;font-size:12px;line-height:18px}
+.ar-tip{position:absolute;width:245px;max-height:370px}
+.ar-tile[draggable="true"]{cursor:grab}.ar-drag-source{opacity:.52}
+.ar-drag-info{display:none}
+.ar-dragging .ar-inspector>:not(.ar-drag-info){display:none}
+.ar-dragging .ar-drag-info{display:block}
+.ar-drag-info:empty::before{content:"放到目标盘位；拖回背包可卸下";color:#cfbd9c}
+.ar-drop-target{outline:2px solid #96debd!important;outline-offset:-2px!important}
+.ar-dragging .ar-tile canvas,.ar-dragging .ar-slot small{pointer-events:none}
+@media(pointer:coarse){.ar-tile[draggable="true"]{touch-action:none;-webkit-touch-callout:none;user-select:none}}
+.workshop-dialog{
+  position:fixed;inset:50% auto auto 50%;margin:0;width:556px;max-width:none;max-height:640px;
+  transform:translate(-50%,-50%) scale(var(--game-scale,1));transform-origin:center;
+  padding:16px;background:#26212b;color:#e6d7c1;border:3px double #b49a75;
+  box-shadow:0 10px 36px #09080bc9;font:14px/1.45 Consolas,SimSun,serif;
+}
+.workshop-dialog::backdrop{background:#100c16bb}
+.salvage-title{padding:8px 13px;background:#342c34;border-left:3px solid #b89569}
+.salvage-title small{color:#d3af7e}.salvage-title h2{margin:3px 0;color:#f0d5ad;font:700 24px/1.35 SimSun,serif}
+.salvage-payout,.salvage-actions,.salvage-pages{display:flex;align-items:center;gap:10px}
+.salvage-payout{justify-content:space-between;padding:12px 2px;color:#cbbbc8}
+.salvage-payout b{font-size:17px;color:#d7b6e8}
+.salvage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.salvage-card{min-width:0;display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:6px;padding:6px;background:#2d2730;border:1px solid #64535f;border-left:2px solid var(--rarity)}
+.salvage-card canvas{width:38px;height:38px;image-rendering:pixelated}.salvage-card>div{min-width:0}
+.salvage-card b,.salvage-card span{display:block;font-size:12px}.salvage-card b{color:var(--rarity);overflow-wrap:anywhere}
+.salvage-grid:has(>:only-child){grid-template-columns:1fr}.salvage-grid:has(>:only-child) .salvage-card{grid-template-columns:54px 1fr}
+.salvage-grid:has(>:only-child) canvas{height:48px;width:48px}.salvage-grid:has(>:only-child) b{font-size:15px}
+.salvage-pages{justify-content:center;margin-top:6px}.salvage-pages[hidden]{display:none}
+.salvage-actions{justify-content:flex-end;border-top:3px double #685963;padding-top:10px}
+.salvage-review p{margin:9px 0;color:#cfbca8}.workshop-dialog button:focus-visible{outline:2px solid #e1be85;outline-offset:1px}
+.forge-review{width:580px}
+.forge-head{display:flex;align-items:center;gap:14px;padding:10px;background:#342c34;border-left:3px solid #b89569}
+.forge-head canvas{width:54px;height:54px;image-rendering:pixelated}.forge-head small{color:#d3af7e}
+.forge-head h2{margin:3px 0;color:#f0d5ad;font:700 21px/1.3 SimSun,serif}.forge-head span{color:#c9bbac;font-size:13px}
+.forge-lines{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.forge-lines section{display:grid;align-content:start;gap:3px;padding:9px;border:1px solid #655861;background:#2c2730}
+.forge-lines section:last-child{border-left:3px solid #a8bb9e}.forge-lines small{color:#c2b3a7}
+.forge-lines b{color:#eddbb7}.forge-lines span{color:#d8c9be;font-size:13px}
+.forge-changes{border-top:1px solid #65585c;padding:8px 0;max-height:225px;overflow:auto}
+.forge-changes h3{font-size:15px;margin:0 0 6px;color:#ddbfa2}.forge-changes .ar-numbers{font-size:14px;margin:0}
+.forge-cost,.forge-actions{display:flex;align-items:center;gap:10px;border-top:3px double #695a60;padding:10px 0 0}
+.forge-cost{justify-content:space-between}.forge-cost b{color:#d8b7e6}.forge-actions{justify-content:flex-end;border:0}
+.ar-item-info .ar-power{border-left:2px solid var(--tier);padding:5px 8px;background:#302a2a;color:#f2cc99!important}
+.echo-guide{margin:12px 0;padding:10px 14px;border:1px solid #705e62;background:#28232d}
+.echo-guide summary{cursor:pointer;color:#eed3a1;padding:4px 0}.echo-guide details{margin-top:7px}
+.echo-guide div{display:grid;grid-template-columns:95px 1fr;gap:10px;padding:3px 0;border-bottom:1px solid #453b44}.echo-guide div span{color:#d3c6bd}
+#panel-body .forge-error{color:#e79e86;margin:4px 0}
+.ar-items .ar-tile .ar-rarity{font-weight:bold;color:var(--tier);background:#17151cf2;padding:1px 2px}
+.wallet-token{display:inline-block!important;vertical-align:-4px;width:20px!important;height:20px!important;object-fit:contain;image-rendering:pixelated;margin-right:3px}
+.echo-guide>a{color:#f2d49b}
+.ar-inspector>canvas[data-echo-format=detail]{width:128px;height:140px;object-fit:contain}
+.stash-detail canvas[data-echo-format=detail],.forge-head canvas[data-echo-format=detail],.report-item-heading canvas[data-echo-format=detail]{height:auto;aspect-ratio:128/140;object-fit:contain}
