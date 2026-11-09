@@ -3,7 +3,6 @@ globalThis.AtlasArt=(()=>{
   const source=new URL("atlas/",document.currentScript.src);
   const frames={};
   const viewHeight=226;
-  const reduced=matchMedia("(prefers-reduced-motion: reduce)");
   let ground,vertical=0,pan=0,zoom=1,lastTime=0;
   function rect(x,y,w,h,c){box(ctx,x,y,w,h,c)}
   function shape(points,c){poly(ctx,points,c)}
@@ -75,8 +74,7 @@ globalThis.AtlasArt=(()=>{
       rect(x,(i*37+time*.85)%188,1,1,i%3?"#73958c":"#d7b574");
     }
     ctx.scale(zoom,zoom);
-    const shake=reduced.matches?0:Math.sin(time*70)*(rig.recoil*1.4+rig.dorsalKick*.9);
-    ctx.translate(-Math.round(pan),Math.round(viewHeight/zoom-FLOOR-10+vertical+shake));
+    ctx.translate(-Math.round(pan),Math.round(viewHeight/zoom-FLOOR-10+vertical));
     if(!ground){
       ground=document.createElement("canvas");ground.width=W;ground.height=36;
       const c=ground.getContext("2d");tiles(c,0,0,W,36);

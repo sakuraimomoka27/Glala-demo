@@ -13,6 +13,7 @@ let observatory=null,elementBoss=null,roomPlatforms=[];
 let inStreet=false,mooring,waterWait=0;
 let tourTile=null;
 let sentinels=[];
+let cameraKick=null, hitPause=0;
 const struckThisDescent=new Set();
 const entrance=()=>options.door?.scene==="krosos"?options.door:null;
 const gorge=()=>options.door?.scene==="gorge"?options.door:null;
@@ -42,6 +43,7 @@ function updateTrial(){
 }
 function report(msg){ byId("report").textContent=msg; }
 function reset(override) {
+  cameraKick=null;hitPause=0;
   settledResult=null;exitReady=false;floorHeight=0;panelLocked=false;defeatCause="";
   struckThisDescent.clear();
   byId("leave").textContent=options.routeNumber?"撤离本关…":"撤离结算";
@@ -175,6 +177,22 @@ function fx(kind,x,y,txt="",color="#ffd98b",radius=1.25){
  const effect={kind,x,y,txt,color,radius,age:0,life:kind==="projectileHit"?.20:kind==="wave"?.32:kind==="impact"?.22:kind==="strike"?.23:kind==="coin"?.42:.82};
  effects.push(effect);return effect;
 }
+// One impulse per contact. An area hit takes the strongest impulse instead of
+// adding the duration of every target. The timer runs independently of physics.
+function impulse(power,dir,hold=0){
+ hitPause=Math.max(hitPause,hold);
+ if(!cameraKick || cameraKick.power*(1-cameraKick.age/cameraKick.life)<=power){
+   cameraKick={power,dir:dir||1,age:0,life:.09+power*.018};
+ }
+}
+function burst(style,x,y,dir=1,scale=1){
+ // Neighbours in the same wave share particles; a blocked or lethal blow
+ // always gets its own mark. The hit location is in room coordinates.
+ if(!["wound","block","core","stomp","armor"].includes(style) &&
+   effects.some(e=>e.kind==="burst"&&e.txt===style&&e.age<.045&&Math.abs(e.x-x)<.78&&Math.abs(e.y-y)<.6))return;
+ const e=fx("burst",x,y,style,"",scale);
+ e.dir=dir||1;e.life=style==="core"?.37:style==="burn"?.20:.27;
+}
 function end(win){
  if(finished||!creditKills())return;finished=true;syncPause();Profile.flush();
  if(!win && options.routeNumber)return; // Draw the final campaign frame before showing the defeat record.
@@ -186,19 +204,36 @@ function end(win){
  if(saveError){report(saveError);return}
  report(win?"房间已肃清 · 查看战利品。":options.onResolve?"挑战失败 · 本房战利品已失落。":options.practice?"练习结束。":"战斗失败 · 已获得的装备保留。");
 }
-function hurt(source,attack){
+function hurt(source,attack,dir=player.dir*-1,contactY){
  if(player.grace>0||finished)return;
- if(titan?.absorb()){player.grace=.35;fx("num",player.x,player.y+1.05,"格挡","#e6c97a");return}
+ const bodyHeight=landscape() ? .55 : .85;
+ const y=Number.isFinite(contactY)?Math.max(player.y,Math.min(player.y+bodyHeight,contactY)):player.y+bodyHeight*.53;
+ if(titan?.absorb()){
+   player.grace=.35;burst("block",player.x,y,dir);impulse(1.8,dir,.025);
+   DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");return
+ }
  const dmg=(options.damageScale??1)*(1-(loadout.defense||0));player.hp=Math.max(0,player.hp-dmg);player.grace=1.25;syncHud();fx("num",player.x,player.y+1.05,"-"+Number(dmg.toFixed(2)),"#ff8c83");
+ player.hurtAt=clock;player.hurtDir=dir;burst("wound",player.x,y,dir);
+ impulse(player.hp===0?5:3.6,dir,.042);DropSound.contact?.("wound");
  if(player.hp===0){defeatCause=[source,attack].filter(Boolean).join(" · ");end(false)}
 }
-function hit(enemy,value,drops,showNumber=true,breached=false){
+function hit(enemy,value,drops,showNumber=true,breached=false,contactStyle="stomp",point){
  if(enemy.hp<=0)return;
- if(enemy.guard?.rig&&!breached)return;
+ if(enemy.guard?.rig&&!breached){
+   if(point)burst("armor",point.x,point.y,point.dir||player.dir,.65);
+   return;
+ }
  if(enemy.kind==="bell")value=Math.max(1,Math.round(value*(enemy.phase==="weak"?1.7:.65)));
  if(enemy.guard?.frame&&!breached)value=Math.min(value,Math.max(1,Math.ceil(enemy.max*.08)));
- enemy.hitAt=clock;enemy.hitSide=enemy.x>=player.x?1:-1;
+ enemy.hitAt=clock;enemy.hitSide=point?.dir||(enemy.x>=player.x?1:-1);
  enemy.hp=Math.max(0,enemy.hp-value);if(showNumber)fx("num",enemy.x,enemy.guard?GuardianCombat.height(enemy,SCALE)+.25:enemy.baseY+.85,"-"+value);
+ const contactX=point?.x??enemy.x;
+ const contactY=point?.y??(enemy.guard?enemy.guard.lift+.85:(enemy.baseY||0)+(enemy.headHeight||JumpPhysics.headHeight)*.60);
+ burst(contactStyle,contactX,contactY,point?.dir||enemy.hitSide,breached?1.25:1);
+ if(contactStyle!=="stomp" && !breached && contactStyle!=="wave" && Math.abs(player.x-contactX)<10){
+   if(contactStyle!=="burn")impulse(1.3,enemy.hitSide);
+   DropSound.contact?.(contactStyle);
+ }
  if(enemy.hp)return;
  kills++;
  if(awardKills){
@@ -242,33 +277,37 @@ function announceDrops(drops) {
 }
 function contact(target,speed,point) {
  const previousKills=kills,previousTargetHP=target?.hp;
+ let openedCore=false;
  const damage=Math.max(1,Math.round(JumpPhysics.damage(speed,loadout.attack)*(loadout.jumpMultiplier||1)));
  const drops=[];
  if(target){
    if(target.guard?.rig){
-     if(point?.part!==1||!GuardianCombat.exposed(target))return;
-     target.guard.rig.used=true;target.guard.rig.impact=1;
-     hit(target,Math.max(damage,Math.ceil(target.max/4)),drops,false,true);
+     if(point?.part!==1||!GuardianCombat.exposed(target)){
+       burst("armor",player.x,point.y,player.dir,.76);impulse(1.5,player.dir);
+       DropSound.contact?.("block");return
+     }
+     openedCore=true;target.guard.rig.used=true;target.guard.rig.impact=1;
+     hit(target,Math.max(damage,Math.ceil(target.max/4)),drops,false,true,"core",{x:player.x,y:point.y});
      fx("num",point.x,point.y+.35,"肩核破击","#ffe6a2");
    }else if(target.guard?.frame&&target.phase==="weak"&&!target.guard.frame.used&&point?.part===target.guard.frame.cfg.core){
-     const frame=target.guard.frame;frame.used=true;frame.stagger=1;
-     hit(target,Math.max(damage,Math.ceil(target.max/5)),drops,true,true);
+     const frame=target.guard.frame;openedCore=true;frame.used=true;frame.stagger=1;
+     hit(target,Math.max(damage,Math.ceil(target.max/5)),drops,true,true,"core",{x:player.x,y:point.y});
      fx("num",point.x,point.y+.35,frame.cfg.site+"破击",frame.cfg.colors[2]);
    }else{
    if(target.kind==="guard"){target.swing="recover";target.swingTime=.38}
-   titan?.ignite(target,{fx});hit(target,damage,drops)
+   titan?.ignite(target,{fx});hit(target,damage,drops,true,false,"stomp",{x:player.x,y:point.y})
    }
  }
  const fault=loadout.powers?.impact_ring;
  if(target&&fault){
-   fx("wave",target.x,0,"","#ef9e64",fault.radius);
-   for(const e of enemies)if(e!==target&&e.hp>0&&Math.hypot(e.x-target.x,e.baseY-target.baseY)<=fault.radius)hit(e,Math.max(1,Math.round(damage*fault.power)),drops,false);
+   fx("wave",target.x,target.baseY||0,"","#ef9e64",fault.radius);
+   for(const e of enemies)if(e!==target&&e.hp>0&&Math.hypot(e.x-target.x,e.baseY-target.baseY)<=fault.radius)hit(e,Math.max(1,Math.round(damage*fault.power)),drops,false,false,"wave");
  }
  const skill=loadout.wave, wave=skill && (!target||loadout.kind!=="earth") && player.wave && speed>=skill.threshold && spend(loadout.waveCost);
  let hits=0;
- if(wave){player.wave=false;fx("wave",player.x,floorHeight,"","#ffcf76",skill.radius);
+ if(wave){player.wave=false;fx("wave",player.x,target?.baseY??floorHeight,"","#ffcf76",skill.radius);
    for(const e of enemies)if(e!==target&&e.hp>0&&Math.hypot(e.x-player.x,options.door?.authored?e.baseY-(target?.baseY??floorHeight):0)<=skill.radius){
-     hit(e,Math.round(damage*skill.power),drops,hits++<4);
+    hit(e,Math.round(damage*skill.power),drops,hits++<4,false,"wave");
    }
    if(hits>0)titan?.shield(player,{fx});
    if(hits>4)fx("num",player.x,1.65,"×"+(hits+(target?1:0)),"#ffd47c");
@@ -280,8 +319,8 @@ function contact(target,speed,point) {
     trialComplete=true;updateTrial();
  }
  if(target||hits){
-   const heavy=!!hits||loadout.weight>=10;
-   fx("strike",point?.x??player.x,point?.y??floorHeight,"",heavy?"#ffd086":"#bce6de",heavy?2:1);
+   const heavy=!!hits||loadout.weight>=10||openedCore;
+   impulse(openedCore?5.3:heavy?3.9:2.7,player.dir,openedCore ? .060 : heavy ? .043 : .028);
    player.strikeAt=player.motionTime;DropSound.impact?.(heavy);
  }
  const reportedDamage=target?.guard?.frame?previousTargetHP-target.hp:damage;
@@ -344,11 +383,17 @@ function guardTurn(e,dt,p,decoy,dx){
  const reach=e.headHeight?(move.fullReach??move.reach):move.reach;
  e.swingTime=(e.swingTime||0)-dt;
  if(e.swing==="tell"){
-   if(e.swingTime<=0){e.swing="cut";e.swingTime=move.active;e.cutHit=false}
+   if(e.swingTime<=0){
+     e.swing="cut";e.swingTime=move.active;e.cutHit=false;
+     if(Math.abs(e.x-p.x)<4){
+       DropSound.contact?.("swing");
+       if(e.id==="forgeguard"||e.id==="trial_guard")impulse(1.15,e.swingDir);
+     }
+   }
  }else if(e.swing==="cut"){
    const d=(target.x-e.x)*e.swingDir;
    if(!e.cutHit&&d>=-.14&&d<=reach&&target.y<e.baseY+.50&&target.y+.55>e.baseY){
-     e.cutHit=true;if(decoy)titan.hurtShade(decoy);else hurt(e.name,move.attack);
+     e.cutHit=true;if(decoy)damageShade(decoy,e.swingDir);else hurt(e.name,move.attack,e.swingDir);
    }
    if(e.swingTime<=0){e.swing="recover";e.swingTime=move.recover}
  }else{
@@ -388,7 +433,7 @@ function extendTour(x){
  d.width+=tourTile.length;
 }
 function tick(dt){
- player.motionTime=(player.motionTime||0)+dt;for(const e of effects)e.age+=dt;if(effects.length && effects.some(e=>e.age>=e.life))effects=effects.filter(e=>e.age<e.life);
+ player.motionTime=(player.motionTime||0)+dt;
  if(!started&&observatory&&!finished)GuardianCombat.poseAtlas(observatory,dt);
  if(!started&&elementBoss&&!finished)ElementFrame.pose(elementBoss,dt);
  if(!started||finished)return;
@@ -432,7 +477,10 @@ function tick(dt){
    if(spend(b.jumpCost)){p.windup=b.windupTicks;fallDrops=[];jumpStartKills=kills}
    else report("体力不足 · 稍候再跳。");
  }
- if(p.windup>0 && --p.windup===0){p.perch=null;p.vy=b.launch;p.grounded=false;p.airAge=0;titan?.jump(p,{fx})}
+ if(p.windup>0 && --p.windup===0){
+   p.perch=null;p.vy=b.launch;p.grounded=false;p.airAge=0;titan?.jump(p,{fx});
+   fx("stepDust",p.x,p.y,"","#a6b7ac",.64).life=.19;
+ }
  if(!p.grounded){
   const oldY=p.y;
   JumpPhysics.advance(p,b);
@@ -453,6 +501,10 @@ function tick(dt){
    else{p.y=point.y-.001}
   }
   if((landing&&(!target||landing.y>point.y)) || (p.y<=0&&dryDeck(p.x))){
+    if(-p.vy>4){
+      fx("stepDust",p.x,landing?.y||0,"","#e9c996",1).life=.24;
+      if(-p.vy>8 && !hitPause)impulse(b.kind==="earth"?2.2:.8,p.dir);
+    }
     floorHeight=landing?.y||0;if(!floorHeight || b.kind==="earth")contact(null,-p.vy);p.landAge=0;p.airJumps=b.extraJumps||0;
     p.y=floorHeight;p.vy=0;p.grounded=true;p.bonus=true;p.wave=true;p.perch=null;p.chainBoss=null;p.chainMask=0;reboundFromFront=false;
   }
@@ -465,7 +517,7 @@ function tick(dt){
  }
  buffer=Math.max(0,buffer-dt);
  if(finished)return;
- if(titan){const drops=[],previous=kills;titan.tick(dt,p,enemies,{fx,platforms,hit:(e,value)=>hit(e,Math.max(1,Math.round(value)),drops)});if(drops.length){const saved=fallDrops;fallDrops=[];announceDrops(drops);fallDrops=saved}if(kills!==previous){syncHud();checkClear();if(finished)return}}
+ if(titan){const drops=[],previous=kills;titan.tick(dt,p,enemies,{fx,platforms,hit:(e,value,style,point)=>hit(e,Math.max(1,Math.round(value)),drops,true,false,style,point)});if(drops.length){const saved=fallDrops;fallDrops=[];announceDrops(drops);fallDrops=saved}if(kills!==previous){syncHud();checkClear();if(finished)return}}
  if(canal&&!inStreet&&options.loopBiome!=="water"&&exitReady&&Math.abs(p.x-canal.waterGate.x)<.46&&Math.abs(p.y-canal.waterGate.y)<.48){
    inStreet=true;floorHeight=0;buffer=0;p.x=canal.streetStart+1.5;p.y=0;p.vy=0;p.grounded=true;p.windup=0;
    p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.perch=null;effects=[];arrows=[];
@@ -484,14 +536,15 @@ function tick(dt){
      e.engaged=true;
    }
    if(e.kind==="guard"){guardTurn(e,dt,p,decoy,dx)}
-  else if(e.guard){GuardianCombat.step(e,dt,p,decoy,roomWidth,hurt,s=>titan?.hurtShade(s))}
+  else if(e.guard){GuardianCombat.step(e,dt,p,decoy,roomWidth,hurt,damageShade,weaponImpulse)}
   else if(e.kind==="bell"){
     e.phaseTime-=dt;
     if(e.phaseTime<=0){
       if(e.phase==="armored"){e.phase="warning";e.phaseTime=e.warning??.9}
       else if(e.phase==="warning"){
         fx("wave",e.x,0,"","#e17965",3);
-       if(Math.abs(p.x-e.x)<3 && p.y<.35)hurt(e.name,"震击");if(decoy&&Math.abs(dx)<3 && decoy.y<.35)titan.hurtShade(decoy);
+       if(Math.abs(p.x-e.x)<8)impulse(2,Math.sign(p.x-e.x));
+       if(Math.abs(p.x-e.x)<3 && p.y<.35)hurt(e.name,"震击",Math.sign(p.x-e.x)||1);if(decoy&&Math.abs(dx)<3 && decoy.y<.35)damageShade(decoy,Math.sign(dx));
         e.phase="weak";e.phaseTime=e.weakTime??1.3;
       }else{e.phase="armored";e.phaseTime=e.period??2.8}
     }
@@ -513,12 +566,21 @@ function tick(dt){
      a.used=true;fx("projectileHit",a.x,a.y,a.ink,"",1);continue;
    }
    const shade=titan?.state.shades.find(s=>s.hp>0&&Math.abs(s.x-a.x)<.28&&s.y<a.y&&s.y+.8>a.y);
-   if(shade){titan.hurtShade(shade);a.used=true;continue}
+   if(shade){damageShade(shade,a.dir);a.used=true;continue}
    if(Math.abs(a.x-p.x)<.25&&p.y<a.y&&p.y+(terrain ? .55 : .8)>a.y){
-     hurt(a.source,a.attack);a.used=true;fx("projectileHit",a.x,a.y,a.ink,"",1);
+     hurt(a.source,a.attack,a.dir,a.y);a.used=true;fx("projectileHit",a.x,a.y,a.ink,"",1);
    }
  }
  if(arrows.length)arrows=arrows.filter(a=>!a.used&&a.x>0&&a.x<roomWidth);
+}
+function damageShade(shade,dir){
+ const before=shade.hp;
+ titan?.hurtShade(shade);
+ if(shade.hp<before)burst("shadow",shade.x,shade.y+.4,dir||1,.72);
+}
+function weaponImpulse(x,power,dir){
+ const strength=power*Math.max(0,1-Math.abs(player.x-x)/20);
+ if(strength>.45)impulse(strength,dir);
 }
 const binds={ArrowLeft:"left",KeyA:"left",ArrowRight:"right",KeyD:"right",Space:"jump",ArrowUp:"jump"};
 function press(key){if(paused || finished)return;if(!keys.has(key)&&key==="jump")buffer=.15;keys.add(key);started=true}
@@ -568,8 +630,16 @@ function frame(now,token){
  if(!active || token!==session)return;
  const elapsed=last ? (now-last)/1000 : 0;last=now;
   if(options.deadline && Date.now()>=options.deadline){settle();return}
- const dt=Math.min(.05,elapsed);clock+=dt;accumulator+=dt;
- while(accumulator>=step){tick(step);if(!active || token!==session)return;accumulator-=step}
+ accumulator+=Math.min(.05,elapsed);
+ while(accumulator>=step){
+   accumulator-=step;
+   for(const effect of effects)effect.age+=step;
+   if(effects.some(effect=>effect.age>=effect.life))effects=effects.filter(effect=>effect.age<effect.life);
+   if(cameraKick){cameraKick.age+=step;if(cameraKick.age>=cameraKick.life)cameraKick=null}
+   if(hitPause>0){hitPause=Math.max(0,hitPause-step);continue}
+   clock+=step;tick(step);
+   if(!active || token!==session)return;
+ }
  options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax);
  const aim=!player.grounded&&player.y>=JumpPhysics.headHeight?nearestHead(player.x,player.y,0):null;
  if(guardianEnemy&&guardianEnemy.hp<=0)guardianEnemy=enemies.find(e=>e.kind==="bell"&&e.hp>0);
@@ -583,8 +653,8 @@ function frame(now,token){
      guardian.style.setProperty?.("--guardian-vital",(100*boss.hp/boss.max)+"%");
    }
  }
- BattleView.draw({clock,sentinels,pose:motionPose(player,loadout),titan:titan?.state,build:loadout,enemies,total,player,character,keys,started,arrows,effects,finished,kills,aim,door:options.door,exitReady,observatory,elementBoss,roomPlatforms});
- if(finished && options.routeNumber && player.hp===0){settle();return}
+ BattleView.draw({clock,cameraKick,sentinels,pose:motionPose(player,loadout),titan:titan?.state,build:loadout,enemies,total,player,character,keys,started,arrows,effects,finished,kills,aim,door:options.door,exitReady,observatory,elementBoss,roomPlatforms});
+ if(finished && options.routeNumber && player.hp===0 && clock-player.hurtAt>=.12){settle();return}
  if(elapsed>0){renderFrames++;renderTime+=elapsed}
  if(!finished && renderTime>=.8){byId("perf").textContent=Math.round(renderFrames/renderTime)+" FPS · "+(total-kills)+" 活跃";renderFrames=0;renderTime=0}
  if(!finished || effects.length)requestAnimationFrame(t=>frame(t,token));

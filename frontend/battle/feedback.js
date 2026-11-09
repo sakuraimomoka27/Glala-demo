@@ -1,6 +1,12 @@
 // Short, throttled pickup motifs. Audio starts only through the sound button.
 globalThis.DropSound = (() => {
  let engine=null, last=-Infinity, lastRank=-1, lastImpact=-Infinity, enabled=false;
+ const lastVoice=new Map(),contacts={
+   swing:["triangle",420,130,.08,.035],block:["square",740,255,.09,.048],
+   wound:["sawtooth",175,44,.14,.095],shot:["sine",710,235,.1,.065],
+   slash:["sawtooth",420,100,.09,.055],blade:["triangle",530,235,.11,.065],
+   shadow:["triangle",170,66,.10,.07],burn:["triangle",198,84,.075,.04]
+ };
  const button=document.getElementById("sound");
  button.onclick=async()=>{
    document.getElementById("scene").focus();
@@ -24,6 +30,17 @@ globalThis.DropSound = (() => {
      osc.connect(gain).connect(engine.destination);osc.start(now);osc.stop(now+length+.01);
      osc.onended=()=>{osc.disconnect();gain.disconnect()};
    }
+ },contact(kind){
+   if(!enabled||!engine||!Object.hasOwn(contacts,kind))return;
+   const now=engine.currentTime;
+   if(now-(lastVoice.get(kind)??-Infinity)<.09)return;
+   lastVoice.set(kind,now);
+   const [wave,from,to,duration,volume]=contacts[kind],osc=engine.createOscillator(),gain=engine.createGain();
+   osc.type=wave;osc.frequency.setValueAtTime(from,now);osc.frequency.exponentialRampToValueAtTime(to,now+duration);
+   gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(volume,now+.004);
+   gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+   osc.connect(gain).connect(engine.destination);osc.start(now);osc.stop(now+duration+.006);
+   osc.onended=()=>{osc.disconnect();gain.disconnect()};
  },impact(heavy){
    if(!enabled||!engine||engine.currentTime-lastImpact<.07)return;
    const now=lastImpact=engine.currentTime,osc=engine.createOscillator(),gain=engine.createGain();

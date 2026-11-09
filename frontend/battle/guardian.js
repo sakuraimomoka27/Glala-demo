@@ -167,7 +167,7 @@ globalThis.GuardianCombat=(()=>{
       dir:-1,lift:0,age:0,move:null,zones:[],activeFor:0,scratch:{}};
     e.phase="armored";e.phaseTime=Math.min(e.period??2.2,1.1);
   }
-  function step(e,dt,p,decoy,edge,damage,damageShade){
+  function step(e,dt,p,decoy,edge,damage,damageShade,impulse){
     const g=e.guard,target=decoy||p,dx=target.x-e.x;
     if(g.rig){updateRig(e,dt);poseAtlas(e,dt)}
     if(g.frame)ElementFrame.pose(e,dt);
@@ -197,6 +197,12 @@ globalThis.GuardianCombat=(()=>{
           if(g.age<zone.at)continue;
           const weapon=g.frame?ElementFrame:AtlasWeapons;
           if(!zone.path)weapon.fire(e,zone);
+          if(!zone.kickSent){
+            zone.kickSent=true;impulse?.(zone.path.ax,zone.type==="rail"?3.8:zone.type==="mortar"?2.8:1.4,g.dir);
+          }
+          if(zone.flight && g.age-zone.at>=zone.flight && !zone.blastSent){
+            zone.blastSent=true;impulse?.(zone.path.bx,zone.type==="mortar"?3.5:2.3,Math.sign(p.x-zone.path.bx)||g.dir);
+          }
           if(zone.type==="rail"&&g.age-zone.at<zone.dur){
             const port=weapon.port(e,zone);
             zone.path.ax=port.x;zone.path.ay=port.y;
@@ -210,9 +216,12 @@ globalThis.GuardianCombat=(()=>{
           const s=sample(zone,g.age,g.scratch);
           if(zone.type==="rush"||zone.type==="vortex"){e.x=s.x;g.lift=s.lift}
           if(!s.live)continue;
+          if(!zone.kickSent){
+            zone.kickSent=true;impulse?.(s.x,["quake","crag","rush","flame"].includes(zone.type)?3:1.35,g.dir);
+          }
           contact=body=>touches(zone,s,body);
         }
-        if(!zone.hitPlayer && contact(p)){zone.hitPlayer=true;damage(e.name,g.move[0])}
+        if(!zone.hitPlayer && contact(p)){zone.hitPlayer=true;damage(e.name,g.move[0],Math.sign(p.x-(zone.path?.ax??e.x))||g.dir)}
         if(decoy && zone.hitShade!==decoy && contact(decoy)){zone.hitShade=decoy;damageShade(decoy)}
       }
       if(e.phaseTime<=0){e.phase="weak";e.phaseTime=g.rig?Math.max(4.3,e.weakTime||0):g.frame?Math.max(2.8,e.weakTime||0):e.weakTime??1.4;g.lift=0;g.age=0;g.zones=[];if(g.rig)g.rig.used=false;if(g.frame)g.frame.used=false}

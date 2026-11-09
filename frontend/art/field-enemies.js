@@ -1,6 +1,6 @@
 globalThis.FieldArt=(()=>{
   const root=new URL(".",document.currentScript.src);
-  const sheets=new Map(),strokes=new Map();
+  const sheets=new Map(),strokes=new Map(),hitCells=new Map();
 
   const palettes={
     steel:["#34354c","#828fb9","#badfeb","#fff4c3"],stone:["#583039","#ce733c","#ffb351","#fff0ab"],
@@ -22,33 +22,46 @@ globalThis.FieldArt=(()=>{
     if(devices.length)sheet("watcher");
     globalThis.PixelFX?.preload();
   }
-  function sprite(g,id,frame,x,y,left,height){
+  function sprite(g,id,frame,x,y,left,height,flash=false){
     const im=sheet(id);if(!im?.naturalWidth)return false;
     g.save();g.translate(Math.round(x*2)/2,Math.round(y*2)/2);
     const k=height/(nativeHeight[id]||96);g.scale(left?k:-k,k);g.imageSmoothingEnabled=false;
-    if(id==="archer")g.drawImage(im,144*frame,104,144,104,-72,-100,144,104);
-    else g.drawImage(im,frame%8*224,Math.floor(frame/8)*152,224,152,-112,-133,224,152);
+    const bow=id==="archer",w=bow?144:224,h=bow?104:152,foot=bow?100:133;
+    const sx=bow?144*frame:frame%8*w,sy=bow?104:Math.floor(frame/8)*h;
+    if(flash){
+      const key=id+":"+frame;
+      if(!hitCells.has(key)){
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        const ink=c.getContext("2d");ink.drawImage(im,sx,sy,w,h,0,0,w,h);
+        ink.globalCompositeOperation="source-atop";ink.fillStyle="#fff4c6b8";ink.fillRect(0,0,w,h);
+        hitCells.set(key,c);
+      }
+      g.drawImage(hitCells.get(key),-w/2,-foot);
+    }else g.drawImage(im,sx,sy,w,h,-w/2,-foot,w,h);
     g.restore();return true;
   }
   function draw(e,x,y,facing,time){
     const config=FieldCombat.profile(e.id,e.kind),height=e.headHeight?config.height*SCALE:JumpPhysics.headHeight*SCALE+1;
-    return sprite(ctx,e.id,FieldCombat.posture(e,time),x,y,FieldCombat.direction(e,facing),height);
+    return sprite(ctx,e.id,FieldCombat.posture(e,time),x,y,FieldCombat.direction(e,facing),height,time-(e.hitAt??-Infinity)<.065);
   }
   // Build the same pixel-cut ribbons used by machine weapons once per phase.
   // An overlapping crowd then costs a single draw per active weapon.
   function stroke(ink,index){
     const key=ink+index;if(strokes.has(key))return strokes.get(key);
-    const c=document.createElement("canvas");c.width=80;c.height=40;const g=c.getContext("2d"),colors=palettes[ink];
+    const c=document.createElement("canvas");c.width=88;c.height=56;const g=c.getContext("2d"),colors=palettes[ink];
     g.scale(2,2);const t=index/5;
     if(ink==="stone"){
       for(let i=0;i<5;i++){
-        const x=7+i*6,y=15-(i%2)*5*Math.sin(t*Math.PI);
-        PixelFX.fill([[x-2,y],[x,y-3-i%2],[x+2,y-1],[x+1,y+1]],i%2?colors[1]:colors[2],g);
+        const x=4+i*7,y=23-(i%2)*4*Math.sin(t*Math.PI),h=6+(i%3)*3;
+        PixelFX.fill([[x-3,y],[x+1,y-h],[x+5,y-h-2],[x+3,y+1]],colors[1],g);
+        PixelFX.fill([[x,y-2],[x+2,y-h],[x+4,y-h-1]],colors[3],g);
       }
-      PixelFX.ribbon(3,17,32,8,-1.08,1.05,3,colors,g);
+      PixelFX.ribbon(3,18,36,6,-1.08,1.5,3,colors,g);
     }else{
-      PixelFX.ribbon(3,14,31+2*t,9,-1.62+.35*t,1.48,4.5,colors,g);
-      if(ink==="claw")PixelFX.ribbon(2,18,29,8,-1.5+.35*t,1.3,3,colors,g);
+      const a=-1.55+.74*t;
+      PixelFX.ribbon(3,13,35,12,a,1.98,6,colors,g);
+      PixelFX.ribbon(3,15,31,10,a+.25,1.65,2.4,colors,g);
+      if(ink==="claw")PixelFX.ribbon(3,17,26,9,a+.44,1.53,2.4,colors,g);
     }
     strokes.set(key,c);return c;
   }
@@ -64,7 +77,8 @@ globalThis.FieldArt=(()=>{
     if(e.swing==="tell")warning(x,y,e.swingDir,reach,clamp(1-e.swingTime/c.windup),color);
     if(e.swing==="cut"){
       const t=clamp(1-e.swingTime/c.active);ctx.save();ctx.translate(x,y);ctx.scale(e.swingDir,1);
-      ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6))),0,-17,reach*SCALE*1.12,18);ctx.restore();
+      const height=e.headHeight?29:20;
+      ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6))),0,-height+3,reach*SCALE*1.13,height);ctx.restore();
     }
     if(e.kind==="bow"||e.id==="watcher"){
       const compact=!e.headHeight&&e.id!=="watcher",yy=y-(compact?.42:c.portY)*SCALE;
@@ -74,7 +88,10 @@ globalThis.FieldArt=(()=>{
         const t=clamp(1-e.aim/c.draw),end=e.id==="watcher"?41:22;
         ctx.fillStyle=color[1];for(let i=3;i<=end;i+=5)ctx.fillRect(Math.round(start+d*i),Math.round(yy),2,.5);
         ctx.fillStyle=color[2];ctx.fillRect(start-1,yy-1,2,2);if(t>.5){ctx.fillRect(start-2,yy,5,.7);ctx.fillRect(start,yy-2,.7,4)}
-      }else if(e.release>.10){PixelFX.flare(start,yy,3+e.release*12,color[2])}
+      }else if(e.release>.07){
+        ctx.save();ctx.translate(start,yy);ctx.scale(-d,1);
+        PixelFX.muzzle(0,0,0,(e.release-.07)*3.5,color);ctx.restore();
+      }
     }
   }
   function projectile(a){

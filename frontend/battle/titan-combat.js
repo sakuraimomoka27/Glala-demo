@@ -26,7 +26,7 @@ globalThis.TitanCombat=(()=>{
       e.burnStacks=!burning?1:stacks<rates.length&&Math.random()<Math.min(1,rates[stacks]+b.ailmentHit)?stacks+1:stacks;
       e.burnLeft=b.burnTime;
       if(!burning)e.burnTick=.5;
-      fx(h,"impact",e.x,.6,"","#f39454",.75);
+      fx(h,"impact",e.x,(e.baseY||0)+.6,"","#f39454",.75);
     }
     function shield(p,h){if(b.kind==="earth"&&state.shieldWait<=0){state.shield=1;state.shieldWait=b.shieldPeriod;fx(h,"num",p.x,p.y+1,"护盾","#caaf70")}}
     function absorb(){if(!state.shield)return false;state.shield=0;return true}
@@ -46,24 +46,24 @@ globalThis.TitanCombat=(()=>{
         blade.x+=blade.dir*7*dt;
         for(const enemy of enemies){
           if(enemy.hp<=0||blade.hits.has(enemy)||(enemy.guard?bodyDistance(enemy,blade.x,blade.y):Math.hypot(enemy.x-blade.x,(enemy.baseY||0)+.45-blade.y))>b.bladeSize+.18)continue;
-          blade.hits.add(enemy);h.hit(enemy,b.bladeDamage);
+          blade.hits.add(enemy);h.hit(enemy,b.bladeDamage,"blade",blade);
         }
       }
       state.shieldWait=Math.max(0,state.shieldWait-dt);state.flash=Math.max(0,state.flash-dt);
       if(b.kind==="burn")for(const e of enemies){if(!e.hp||!e.burnLeft)continue;e.burnLeft=Math.max(0,e.burnLeft-dt);e.burnTick-=dt;
-        if(e.burnTick<=1e-7){e.burnTick+=.5;h.hit(e,b.burnDamage*.5*e.burnStacks)}}
+        if(e.burnTick<=1e-7){e.burnTick+=.5;h.hit(e,b.burnDamage*.5*e.burnStacks,"burn")}}
       else if(b.kind==="shot"||b.kind==="slash"){
         state.period-=dt;
         if(state.period<=0){
           state.period+=b.kind==="shot"?b.shotPeriod:b.slashPeriod;
           if(b.kind==="shot"&&state.bolts.length<12){const y=p.y+.46;
             state.bolts.push({x:p.x,y,dir:p.dir,vy:0,life:1.5});
-          }else if(b.kind==="slash"){state.flash=.23;for(const e of enemies)if(e.hp&&(e.guard?bodyDistance(e,p.x,p.y+.45):Math.hypot(e.x-p.x,p.y-(e.baseY||0)-.12))<b.slashRadius)h.hit(e,b.slashDamage)}
+          }else if(b.kind==="slash"){state.flash=.23;for(const e of enemies)if(e.hp&&(e.guard?bodyDistance(e,p.x,p.y+.45):Math.hypot(e.x-p.x,p.y-(e.baseY||0)-.12))<b.slashRadius)h.hit(e,b.slashDamage,"slash",e.guard?{x:p.x,y:p.y+.45,dir:p.dir}:undefined)}
         }
         if(b.kind==="shot")for(let i=state.bolts.length-1;i>=0;i--){
           const m=state.bolts[i];m.life-=dt;m.x+=dt*7.5*m.dir;m.y+=dt*m.vy;
           const hit=enemies.find(e=>e.hp&&(e.guard?bodyDistance(e,m.x,m.y)<b.shotSize:Math.abs(e.x-m.x)<b.shotSize+.18&&Math.abs((e.baseY||0)+.45-m.y)<b.shotSize+.32));
-        if(hit)h.hit(hit,b.shotDamage);if(hit||m.life<=0||m.x<0||m.x>roomWidth||m.y<0)state.bolts.splice(i,1);
+        if(hit)h.hit(hit,b.shotDamage,"shot",m);if(hit||m.life<=0||m.x<0||m.x>roomWidth||m.y<0)state.bolts.splice(i,1);
         }
       }else if(b.kind==="shadow")for(let i=state.shades.length-1;i>=0;i--){
         const s=state.shades[i];s.life-=dt;s.grace=Math.max(0,s.grace-dt);
@@ -86,7 +86,7 @@ globalThis.TitanCombat=(()=>{
         if(s.phase<1)return;
         s.base=s.y=s.endY;s.mode="wait";s.seek=0;
         if(safe(s.target)&&Math.abs(s.base-(s.target.baseY||0))<.85 && Math.abs(s.target.x-s.x)<=b.shadowRadius){
-          h.hit(s.target,b.shadowDamage);state.shadeHits++;s.grace=.28;fx(h,"impact",s.x,s.y,"","#aa89d3",1);
+          h.hit(s.target,b.shadowDamage,"shadow");state.shadeHits++;s.grace=.28;fx(h,"impact",s.x,s.y,"","#aa89d3",1);
         }
         s.cooldown=.12;return;
       }
