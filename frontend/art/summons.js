@@ -391,12 +391,28 @@ globalThis.SummonArt = (() => {
     cache.set(key,canvas);
     return canvas;
   }
+  const pending=new WeakMap();
   function draw(canvas,summon) {
     const key=identity(summon);
     canvas.width=width; canvas.height=height;
     const ctx=canvas.getContext("2d");
     ctx.imageSmoothingEnabled=false;
     ctx.drawImage(tile(key),0,0);
+    if(globalThis.WorldFolio && key!=="unknown"){
+      const body=WorldFolio.load(key),stage=key==="atlas"?WorldFolio.load("observatory","atlas"):WorldFolio.load(key+"-stage","elements");
+      const token={};pending.set(canvas,token);
+      function paint(){
+        if(pending.get(canvas)!==token||!body.naturalWidth)return;
+        canvas.width=304;canvas.height=216;ctx.imageSmoothingEnabled=false;
+        ctx.fillStyle=themes[key].night;ctx.fillRect(0,0,304,216);
+        if(stage.naturalWidth){const s=Math.max(304/stage.width,216/stage.height);ctx.drawImage(stage,(304-stage.width*s)/2,(216-stage.height*s)/2,stage.width*s,stage.height*s)}
+        ctx.fillStyle="#11222dc9";ctx.fillRect(0,0,304,216);
+        const s=Math.min(282/body.width,194/body.height),w=Math.round(body.width*s),h=Math.round(body.height*s);
+        ctx.drawImage(body,Math.round((304-w)/2),204-h,w,h);
+        ctx.fillStyle=themes[key].light;ctx.fillRect(7,7,18,2);ctx.fillRect(7,7,2,11);ctx.fillRect(279,207,18,2);
+      }
+      if(body.complete&&stage.complete)paint();else Promise.allSettled([body.decode(),stage.decode()]).then(paint);
+    }else pending.delete(canvas);
     canvas.setAttribute?.("role","img");
     canvas.setAttribute?.("aria-label",(summon?.name || names[key])+"像素卡面");
   }

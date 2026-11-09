@@ -133,8 +133,8 @@
   }
   function inventory(root){VaultView(root,close,character.id,catalog)}
   function sheet(root){VaultView(root,close,character.id,catalog,"character")}
-  function town(start=.49){
-    if(typeof start!=="number")start=.49;
+  function town(start=.52){
+    if(typeof start!=="number")start=.52;
     view("town");stopTown=WorldView.town(lobby,character,{map:atlas,visit:station=>{
       switch(station.service){
         case "共享仓库": popup(root=>SharedStashView(root,close));break;
@@ -224,6 +224,15 @@
   let gorgeMap=null;
   let drillBoss=new URLSearchParams(location.search).get("boss")||"",drillMain=new URLSearchParams(location.search).get("titan")||"mnemosyne";
   let drillFoe=new URLSearchParams(location.search).get("foe")||"";
+  function fieldReceipt(title,out,where,buttons){
+    // Keep the real final frame. Practice has neither a chapter receipt nor inventory rewards.
+    const frame=el("canvas"),field=$("scene");frame.width=field.width;frame.height=field.height;
+    frame.getContext("2d").drawImage(field,0,0);frame.setAttribute("aria-label",where+"的战斗记录");
+    view("report");
+    const page=el("article",undefined,"field-receipt"),copy=el("section"),nav=el("nav");
+    copy.append(el("small","探求者手记　／　"+where),el("h1",title),el("b","击败守卫　"+out.kills+" / "+out.total),el("p","本次使用临时角色，收获不会带入存档。"));
+    nav.append(...buttons);copy.append(nav);page.append(frame,copy);lobby.replaceChildren(page);
+  }
   function visitGorge(){
     const ci=catalog.chapters.findIndex(c=>c.id==="belfry"),chapter=catalog.chapters[ci];
     const si=chapter?WorldCampaign.rooms(chapter).indexOf("ember_pass"):-1;
@@ -240,8 +249,8 @@
     training=true;Profile.practice(character.id);
     fight(field,{practice:true,door:WorldCampaign.exitLayout(chapter,ci,si),worldTier:1,
       loopBiome:loop?"gorge":null,label:loop?"沿栈道连续巡游":editing?"关卡试走 · 穿过终点山门":"灰烬栈道 · 清除守卫，穿过山门。",onResolve:()=>null},out=>{
-      view("report");lobby.replaceChildren(el("h1",out.win?"山门已开":"结束勘察"),
-        el("p","击败守卫 "+out.kills+" / "+out.total),button("再走一次",()=>location.reload()),editing?button("返回编辑器",()=>location.assign("level-editor.html")):button("返回标题",home));
+      fieldReceipt(out.win?"山门已开":"结束勘察",out,editing?"关卡试走":stage.name,[
+        button("再走一次",()=>location.reload()),editing?button("返回编辑器",()=>location.assign("level-editor.html")):button("返回标题",home)]);
     });
   }
   function visitEntrance(){
@@ -256,9 +265,7 @@
     const label=waterLoop?"水神都市郊区 · 沿栈桥巡游":startStreet?"克罗索斯街道 · 沿街漫游":"水神都市郊区 · 越过三段水渠，清除守卫后穿过水门。";
     fight(stage,{practice:true,door:WorldCampaign.exitLayout(chapter,ci,si),worldTier:1,startStreet,
       loopBiome:waterLoop?"water":"street",label,onResolve:()=>null},out=>{
-      view("report");
-      lobby.replaceChildren(el("h1","结束漫游"),el("p","击败守卫 "+out.kills+" / "+out.total),
-        button("再走一次",visitEntrance),button("返回标题",home));
+      fieldReceipt("结束漫游",out,"克罗索斯",[button("再走一次",visitEntrance),button("返回标题",home)]);
     });
   }
   function trials(){
@@ -295,8 +302,7 @@
       settings={...settings,bossDrill:false,fieldDrill:true,door:layout.door,onResolve:()=>null,label:hint};
     }
     fight(encounter,settings,out=>{
-      view("report");lobby.replaceChildren(el("h1",out.win?"训练完成":"训练结束"),el("p","击杀 "+out.kills+" / "+out.total),
-        button("再次挑战",trials),button("返回标题",home));
+      fieldReceipt(out.win?"训练完成":"训练结束",out,"行会演武",[button("再次挑战",trials),button("返回标题",home)]);
     });
   }
   $("leave").onclick=requestWithdrawal;

@@ -79,6 +79,8 @@ globalThis.JourneyView=(()=>{
       controls.report();
       const heading=el("h1",receipt.status);
       checkpoint.querySelector("h1").replaceWith(heading);
+      checkpoint.dataset.result="lost";
+      checkpoint.querySelector("header .folio-badge")?.replaceWith(WorldFolio.badge("lost"));
       checkpoint.querySelector(".rift-note").replaceChildren(el("b","挑战结束"),el("span","本房战利品已保留，本次未升层。"));
       checkpoint.querySelector("[data-next-room]")?.remove();
       heading.tabIndex=-1;heading.focus({preventScroll:true});
@@ -90,7 +92,7 @@ globalThis.JourneyView=(()=>{
     controls.report();
     const receipt=outcome.settlement,won=!!(receipt?.complete||receipt?.next),run=Profile.hero.run;
     const screen=el("section",undefined,"rift-report"),head=el("header"),portrait=el("canvas");
-    screen.dataset.run=context.id;
+    screen.dataset.run=context.id;screen.dataset.result=won?"won":"lost";
     if(receipt?.next)screen.dataset.nextStep=String(context.number);
     GlalaArt.draw(portrait,null,"portrait");portrait.setAttribute("aria-hidden","true");
     const title=el("div");title.append(el("small",context.route+"　／　第 "+context.number+" 房"),el("h1",receipt?.status||"冒险结束"),el("b",context.stage));
@@ -101,7 +103,7 @@ globalThis.JourneyView=(()=>{
       const opened=WorldDifficulty.unlocked(catalog,context.progress,Profile.hero);
       if(opened.length)note.append(el("b","遗迹潮位已开放　"+opened.join("、")));
     }
-    head.append(portrait,title,note);
+    title.prepend(WorldFolio.badge(won?"won":"lost"));head.append(portrait,title,note);
     const metrics=el("div",undefined,"rift-metrics"),income=receipt?.growth||outcome.growth||{};
     function metric(label,value,caption){
       const cell=el("div");cell.append(el("small",label),el("strong",String(value)),el("span",caption));metrics.append(cell);

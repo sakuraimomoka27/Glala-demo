@@ -8,10 +8,18 @@
     const shop=source==="exchange",machine=machines.find(m=>m.id===source),ids=shop?book.exchange.map(x=>x.id):book.fights[source][mode].ids;
     if(!ids.includes(selected))selected=ids[0];
     const s=document.querySelector(".sources"),m=document.querySelector(".modes");s.replaceChildren();m.replaceChildren();
-    for(const entry of [...machines,{id:"exchange",name:"金星兑换"}])s.append(btn(entry.name,()=>{source=entry.id;show()},source===entry.id));
+    for(const entry of [...machines,{id:"exchange",name:"金星兑换"}]){
+      const b=btn(entry.name,()=>{source=entry.id;show();s.querySelector('[aria-pressed=true]').focus({preventScroll:true})},source===entry.id);
+      s.append(b);
+    }
     $("kicker").textContent=shop?"商会　／　金星兑换":"虚数体幻想战　／　"+machine.series;
     $("heading").textContent=shop?"耀金星徽兑换":machine.name+"讨伐战";
-    if(!shop)for(const [id,label] of [["hard","困难"],["origin","真源"]])m.append(btn(label,()=>{mode=id;show()},mode===id));
+    const art=shop?document.createElement("img"):WorldFolio.rig(source);
+    if(shop){art.src=WorldFolio.url("star-badge");art.className="exchange-seal"}
+    art.alt=shop?"耀金星徽":machine.name+"战斗立像";$("source-plate").replaceChildren(art);
+    $("lore").textContent=shop?"金星兑换单列收录。这里的回响不会从虚数体幻想战掉落。":machine.description;
+    $("count").textContent=ids.length+" 张";m.hidden=shop;
+    if(!shop)for(const [id,label] of [["hard","困难"],["origin","真源"]])m.append(btn(label,()=>{mode=id;show();m.querySelector('[aria-pressed=true]').focus({preventScroll:true})},mode===id));
     $("description").textContent=shop?"每张兑换价为 240 耀金星徽。这六张原作 SSR 收录为横版 UR 卡面。":(mode==="hard"?"潮位 1–3　·　":"潮位 4–7　·　")+"本场可掉落的共鸣回响";
     const list=$("cards");list.replaceChildren();
     for(const id of ids){

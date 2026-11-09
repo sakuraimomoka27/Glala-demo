@@ -1,0 +1,79 @@
+/* Front matter and expedition receipts share indigo paper, ivory type and brass rules. */
+#game-stage #lobby:has(.title-art){display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:0 0 4% 6%;background:#10242d}
+#game-stage #lobby:has(.title-art)::before{background:linear-gradient(90deg,#0a192457,transparent 53%),linear-gradient(0deg,#08172077,transparent 15%)}
+#game-stage #lobby:has(.title-art) .screen-head{padding:0;max-width:39%;margin:0 0 21px}
+#game-stage #lobby:has(.title-art) .screen-head small,.cover-place small{color:#e3c68e;font:700 13px/1.7 SimSun,serif;letter-spacing:.18em}
+#lobby:has(.title-art) .screen-head h1{margin:13px 0 8px}
+#lobby:has(.title-art) .screen-head p{color:#dddccd;max-width:293px;font:16px/1.9 SimSun,serif}
+#game-stage #lobby:has(.title-art) .actions{display:grid;grid-template-columns:1fr 1fr;width:322px;gap:8px;margin:0}
+#game-stage #lobby:has(.title-art) .actions button{min-width:0;min-height:35px;font:700 15px/1.35 SimSun,serif;letter-spacing:.1em;background:#132832ed;border:1px solid #8c8471;color:#e5d4b5;text-shadow:1px 1px #14232c}
+#game-stage #lobby:has(.title-art) .actions button:first-child{grid-column:1/-1;background:#d4b27c;color:#282c2a;text-shadow:none;font-size:19px;border:3px double #756245}
+#game-stage #lobby:has(.title-art) .actions button:last-child{grid-column:1/-1;justify-self:start;border:0;border-bottom:1px solid #887961;background:#14253194;min-height:28px;font-size:12px}
+#lobby .cover-place{position:absolute;bottom:20px;right:25px;display:grid;text-align:right;color:#f6e6c9;text-shadow:1px 2px #17242c}
+.cover-place b{font:700 18px/1.6 SimSun,serif;letter-spacing:.1em}
+.expedition-atlas .atlas-folio,.expedition-report .report-layout>section,.expedition-report .report-metric,.rift-report .rift-gallery{background:#202b32;border-color:#695f52}
+.expedition-atlas .atlas-region-copy{position:relative;overflow:hidden}
+.atlas-region-copy>.folio-landmark{float:right;width:62px;height:72px;object-fit:cover;margin:0 0 3px 7px;border:2px solid #74674f;image-rendering:pixelated}
+.atlas-region-copy .atlas-progress{clear:both}
+.town-scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#a68e67 #182931}
+.town-guide{display:none}
+#game-stage #lobby .town-marker{width:116px;height:calc(28% + 50px);flex-direction:column;align-items:center;justify-content:flex-start}
+#game-stage #lobby .town-marker small{color:#fff0cf;text-shadow:1px 1px #181c22,-1px -1px #181c22;font:700 13px/1.5 SimSun,serif;letter-spacing:.08em;background:#253139dc;padding:0 6px}
+#game-stage #lobby .town-marker span{display:flex;align-items:center;gap:5px;padding:4px 7px;background:#1b2c30f5;border:1px solid #e7c790;box-shadow:0 2px #352e2d;font:700 14px/1.3 SimSun,serif}
+.folio-badge{width:18px;height:18px;image-rendering:pixelated;vertical-align:middle}
+#game-stage .town-status{border-left:3px solid #c09b67;background:#1e3035;padding:4px 12px;color:#f5dfbd}
+.expedition-report .report-banner,.rift-report>header,.field-receipt{border:3px double #8f8066;background:linear-gradient(100deg,#183238,#27313b 60%,#1a272d);color:#e9d9bf}
+.report-stamp{position:relative;align-self:stretch;overflow:hidden;margin:0;background:#1c3034}
+.report-stamp .folio-landmark{width:100%;height:100%;display:block;object-fit:cover;object-position:50% 43%;image-rendering:pixelated}
+.report-stamp figcaption{position:absolute;right:8px;bottom:7px;background:#192d2be6;color:#e6d2a7;border:2px solid #c6b18a;padding:2px 8px;letter-spacing:.15em;font:700 14px/1.3 SimSun,serif}
+.report-stamp figcaption canvas{margin-right:5px}
+.campaign-defeat .defeat-title{position:relative;overflow:hidden;padding-right:115px;border:2px solid #9c7766;background:linear-gradient(100deg,#44313a,#2c3037)}
+.defeat-title .folio-landmark{position:absolute;right:0;top:0;height:100%;width:100px;object-fit:cover;filter:saturate(.48);image-rendering:pixelated}
+.rift-report>header>div>.folio-badge{float:right}.rift-report[data-result=lost]>header{border-color:#ac786a}
+.field-receipt{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:center;gap:28px;padding:20px;min-height:80%;margin:auto}
+.field-receipt>canvas{width:100%;image-rendering:pixelated;border:1px solid #a89068}
+.field-receipt section{display:grid;gap:12px}.field-receipt p,.field-receipt h1{margin:0}.field-receipt small{color:#d9bd86;letter-spacing:.12em}
+.field-receipt nav{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:740px) and (orientation:portrait){
+  #game-stage:has(>#lobby:not([hidden]) :is(.title-art,.save-grid,.name-step,.expedition-atlas,.town-scroll,.expedition-report,.campaign-defeat,.rift-report,.field-receipt)){
+    position:fixed;inset:0;transform:none;width:100%;height:100dvh;padding:0 5px 4px;grid-template-rows:30px minmax(0,1fr) auto;gap:3px
+  }
+  #game-stage>header{height:auto;min-width:0}
+  #game-stage #lobby:has(.title-art){padding:0 6% 7%;justify-content:flex-end}
+  #game-stage #lobby .title-art{object-position:65% 50%}
+  #game-stage #lobby:has(.title-art)::before{background:linear-gradient(0deg,#11232cef 2%,#15232ccc 33%,transparent 65%)}
+  #game-stage #lobby:has(.title-art) .screen-head{max-width:100%;margin-bottom:6px}
+  #lobby:has(.title-art) .pixel-heading{max-width:93%}#lobby:has(.title-art) .screen-head p{font-size:14px;margin:5px 0}
+  #lobby .cover-place{top:9px;bottom:auto;right:9px;background:#192931c9;padding:3px 7px}.cover-place b{font-size:13px}.cover-place small{font-size:10px}
+  #game-stage #lobby:has(.title-art) .actions{width:min(100%,330px)}
+  #game-stage #lobby:has(.save-grid),#game-stage #lobby:has(.name-step){display:flex;align-items:stretch;flex-direction:column;justify-content:flex-start;gap:10px;padding:12px}
+  #lobby .choices.save-grid{width:100%;grid-template-columns:1fr;gap:7px}
+  #lobby .save-grid .choice{grid-template-columns:64px 1fr;grid-template-rows:auto auto;gap:2px;padding:7px}
+  #lobby .save-grid .empty-slot,#lobby .save-grid .glala-portrait{grid-area:1/1/4/2;height:56px}
+  #lobby .save-grid .empty-slot canvas{height:48px;width:auto}#lobby:has(.name-step)>.glala-portrait{width:155px;align-self:center}
+  #game-stage #lobby:has(.name-step)>h2{margin:0;align-self:center}
+  #game-stage #lobby:has(.expedition-atlas),#game-stage #lobby:has(.town-scroll),#game-stage #lobby:has(.expedition-report),#game-stage #lobby:has(.rift-report){padding:8px;overflow:auto}
+  #game-stage .atlas-head{flex-wrap:wrap;gap:5px}.atlas-head .pixel-heading,.field-receipt .pixel-heading{height:34px;width:auto!important;max-width:100%}
+  .expedition-atlas .world-picker{order:3;width:100%;margin:0}.world-picker select{max-width:60vw}
+  .atlas-plaque{padding:1px 4px}
+  .atlas-plate{padding-bottom:17px;background:#262430}.atlas-hit-layer{bottom:17px}
+  .atlas-stage-caption{gap:0}.atlas-stage-caption b{white-space:normal;width:max-content;max-width:100px;font-size:10px}
+  .atlas-folio{grid-template-columns:1fr!important}.atlas-folio .atlas-room-detail{border:0;border-top:1px solid #6c665d}
+  #game-stage .town-stage{min-width:700px}.town-status p{margin:3px 0;font-size:14px}.town-status button{flex:none}
+  .town-guide{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:12px}
+  #lobby .town-guide button{display:grid;gap:3px;text-align:left;padding:7px 10px;background:#203139;border:1px solid #716652}
+  .town-guide small{color:#cebe9c}
+  #game-stage #game-dock{grid-template-columns:54px 1fr 54px;padding:2px;gap:2px}
+  #game-stage #game-dock .orb{display:flex;flex-direction:column;gap:1px}#game-stage #game-dock .orb i{display:none}
+  #game-stage #game-dock .dock-menu{gap:4px}#game-stage #game-dock button{min-width:0;flex:1}#game-stage .character-progress{gap:4px}
+  .expedition-report,.rift-report,.campaign-defeat{height:auto;display:flex;flex-direction:column}
+  .expedition-report .report-banner,.rift-report>header{height:auto;min-height:80px;grid-template-columns:1fr auto;padding:8px;gap:6px}
+  .report-banner .report-story,.rift-note{grid-column:1/-1;grid-row:2}.report-stamp{width:82px;min-height:62px;grid-column:2;grid-row:1}.rift-report>header>canvas{width:70px}
+  .report-stamp figcaption{right:2px;bottom:2px;padding:1px 4px;font-size:12px;white-space:nowrap}.report-stamp figcaption canvas{width:13px;height:13px}
+  .report-metrics,.rift-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.report-layout,.defeat-layout{display:flex;flex-direction:column}
+  .report-nav,.defeat-controls,.rift-report .actions{flex-wrap:wrap}.rift-drops{grid-template-columns:1fr 1fr}
+  .report-layout>section,.rift-gallery{overflow:visible}.field-receipt{display:flex;flex-direction:column;gap:14px;padding:12px;justify-content:center}
+  #game-panel:modal:has(.expedition-report,.expedition-atlas){width:96vw;max-height:88dvh;height:auto;overflow:auto;padding:12px;transform:translate(-50%,-50%)}
+  #game-panel:has(.expedition-report)>#panel-body{height:auto}
+  #game-panel .atlas-spread{grid-template-columns:1fr}
+}

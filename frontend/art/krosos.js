@@ -7,7 +7,7 @@ globalThis.KrososArt=(()=>{
     const img=new Image();img.src=new URL(name+".png",directory);pictures.set(name,img);
   }
   function preload(){
-    for(const name of ["vista","lanes","jetty","pier","float","sluice","trestle","arcade","balcony","gate","awning","mill","wheel","skiff","resident-a","resident-b"]){
+    for(const name of ["vista","lanes","jetty","pier","float","sluice","trestle","arcade","balcony","gate","awning","mill","wheel","skiff"]){
       load(name);
     }
   }
@@ -88,8 +88,7 @@ globalThis.KrososArt=(()=>{
       const x=base+i*period;
       if(i%2===0){
         paint("awning",x-21,FLOOR-82,86,82);
-        const b=Math.floor(time*.63+i)%2,wide=b?19:16;
-        paint(b?"resident-b":"resident-a",x+6.1*SCALE-wide/2,FLOOR-48,wide,48);
+        WorldFolio.person(ctx,["106014","106012","103077","106018"][(i/2)%4],x+6.1*SCALE,FLOOR,time);
       }else paint("gate",x+18.6*SCALE,FLOOR-78,64,78);
     }
     for(let x=base+Math.floor(local/104)*104;x<left+W;x+=104)LevelPaint.terrain(ctx,"plinth",x,FLOOR,104,FLOOR);

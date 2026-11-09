@@ -6,31 +6,9 @@ globalThis.ExpeditionReportView = (()=>{
   const positive=n=>n>0?"+"+n:String(n);
   const {el,button}=UI;
   function victoryPainting(chapter){
-    const canvas=el("canvas");canvas.width=218;canvas.height=65;
-    canvas.setAttribute("aria-hidden","true");
-    const ctx=canvas.getContext("2d");
-    ctx.imageSmoothingEnabled=false;
-    function block(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
-    const color=chapter?.color||"#d6ad7e";
-    block(0,0,218,65,"#282935");block(0,23,218,21,"#3f3b46");block(0,38,218,27,"#51444b");
-    for(let i=0;i<28;i++)block((i*53+9)%218,(i*17+3)%30,1,1,i%6?"#817580":"#d0b895");
-    for(let y=-11;y<=11;y++){
-      const span=Math.floor(Math.sqrt(121-y*y));
-      block(168-span,16+y,span*2+1,1,"#dec69b");
-    }
-    for(let i=0;i<20;i++){
-      const x=(i*43)%218,y=30+(i*19)%16;
-      block(x,y,13,29,"#34323d");block(x+2,y-3,3,3,"#34323d");block(x+8,y-3,3,3,"#34323d");
-    }
-    if(globalThis.WorldArt && chapter?.theme)WorldArt.roomLayer(ctx,chapter.theme,218,65);
-    block(0,53,218,12,"#292630");block(0,52,218,2,"#8b796d");
-    for(let i=0;i<20;i++)block((i*37)%217,55+(i%3)*3,6,1,"#554750");
-    // An expedition standard and Glala mark the return from the field.
-    block(64,18,2,34,"#a28e78");block(62,16,6,2,"#e1c997");
-    for(let y=0;y<18;y++)block(66,19+y,15-(y>11?Math.floor((y-10)*.7):0),1,y<2?"#dfc496":color);
-    block(71,24,3,7,"#5b4c4d");block(69,26,7,2,"#5b4c4d");
-    GlalaArt.drawActor(ctx,106,52,false,null,{state:"idle",clock:0});
-    return canvas;
+    const seal=el("figure",undefined,"report-stamp"),art=WorldFolio.landmark(chapter?.id);
+    if(art)seal.append(art);
+    const tag=el("figcaption","已归档");tag.prepend(WorldFolio.badge("won"));seal.append(tag);return seal;
   }
   function collect(catalog,rooms){
     const records=[];

@@ -4,6 +4,7 @@ globalThis.CampaignDefeatView = function(root,{chapter,stage,number,outcome,cata
   const screen=el("article",undefined,"campaign-defeat");
   const title=el("div",undefined,"defeat-title"),heading=el("h1","远征失利");
   title.append(el("small",chapter.name+"　／　探求记录"),heading,el("b",number+"　"+stage.name));
+  const plate=WorldFolio.landmark(chapter.id);if(plate)title.append(plate);
   const layout=el("div",undefined,"defeat-layout"),scene=el("figure",undefined,"defeat-scene");
   const picture=el("canvas");
   picture.width=field.width;picture.height=field.height;

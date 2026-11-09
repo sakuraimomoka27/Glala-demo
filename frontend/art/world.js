@@ -1,5 +1,5 @@
-/* The atlas and the town share a 576-pixel grid with the battle viewport.
-   Only actors, lanterns and embers are redrawn while walking through town. */
+/* The atlas shares a 576-pixel grid with the battle viewport.
+   Custom chapter orders retain the schematic map. */
 globalThis.WorldArt = (() => {
   "use strict";
   const W = 576, H = 184;
@@ -17,7 +17,7 @@ globalThis.WorldArt = (() => {
     return {width:W,height:atlasHeight,landmarks,rooms};
   }
   const cachedLayers = new Map();
-  let townScenery;
+
 
   function brush(ctx) {
     function rect(x, y, w, h, color) {
@@ -237,6 +237,20 @@ globalThis.WorldArt = (() => {
   }
   function map(canvas, chapters, selectedIndex=0, stages=[]) {
     const layout=mapLayout(chapters.length,stages.length);
+    if(chapters.length===WorldFolio.chapters.length&&chapters.every((c,i)=>c.id===WorldFolio.chapters[i])){
+      canvas.width=W*2;canvas.height=atlasHeight*2;
+      const ctx=canvas.getContext("2d");ctx.setTransform(2,0,0,2,0,0);ctx.imageSmoothingEnabled=false;
+      const chart=WorldFolio.load("itinerary"),p=brush(ctx);
+      layout.landmarks.forEach(point=>point.y=115);
+      const paint=()=>{
+        p.rect(0,0,W,atlasHeight,"#18262c");
+        if(chart.naturalWidth)ctx.drawImage(chart,0,-12,W,178);
+        chapterPassage(p,layout,selectedIndex,stages);
+        layout.landmarks.forEach(({x,y},i)=>sigil(p,x,y,i,i===selectedIndex,chapters[i].locked));
+      };
+      paint();if(!chart.complete)chart.addEventListener("load",paint,{once:true});
+      return layout;
+    }
     canvas.width=W;canvas.height=atlasHeight;
     const ctx=canvas.getContext("2d");ctx.imageSmoothingEnabled=false;
     const p=brush(ctx), random=rng(97213);
@@ -264,154 +278,6 @@ globalThis.WorldArt = (() => {
     return layout;
   }
 
-  function bricks(p,random,x,y,w,h,tones) {
-    p.rect(x,y,w,h,tones[0]);
-    for(let row=0;row*5<h;row++){
-      for(let offset=row%2?-6:0;offset<w;offset+=12){
-        const left=Math.max(0,offset),right=Math.min(w,offset+11);
-        if(right<=left)continue;
-        p.rect(x+left,y+row*5,right-left,Math.min(4,h-row*5),tones[1+Math.floor(random()*(tones.length-1))]);
-      }
-    }
-  }
-  function roof(p,x,y,w,h,bright,dark) {
-    p.poly([[x-4,y],[x+w*.46,y-h],[x+w+4,y]],dark);
-    p.poly([[x-4,y],[x+w*.46,y-h],[x+w*.70,y],[x-1,y]],bright);
-    for(let i=1;i<=4;i++){
-      const half=i/5;
-      p.rect(x+w*.46*(1-half),y-h+h*half,w*.64*half,1,dark);
-    }
-    p.line(x-4,y,x+w*.46,y-h,"#bd9884");
-    p.rect(x-4,y,w+8,3,"#302a34");p.rect(x-4,y,w+8,1,"#9c8075");
-  }
-  function windowLit(p,x,y) {
-    arch(p,x,y,11,16,"#332c38");arch(p,x,y-1,7,12,"#e3aa71");
-    p.rect(x,y-11,1,11,"#6a4b48");p.rect(x-3,y-5,7,1,"#6a4b48");
-    p.rect(x-7,y,14,2,"#aa8a77");
-  }
-  function crate(p,x,y,w) {
-    p.rect(x,y,w,w-2,"#42323a");p.rect(x+1,y+1,w-2,w-4,"#86624e");
-    p.line(x+1,y+1,x+w-3,y+w-5,"#ad8261",2);
-    p.rect(x,y,w,2,"#ba926d");p.rect(x,y+w-4,w,2,"#624a43");
-  }
-  function sign(p,x,kind) {
-    p.rect(x-3,101,24,2,"#b39072");p.rect(x+15,102,1,5,"#95877d");
-    p.rect(x+19,102,1,5,"#95877d");p.rect(x+9,106,17,16,"#332e35");
-    p.rect(x+10,107,15,14,"#ab8d6d");p.rect(x+11,108,13,12,"#584750");
-    const xx=x+17,yy=113;
-    if(kind==="box"){
-      p.rect(xx-4,yy-2,9,6,"#d5a870");p.rect(xx-3,yy-3,7,1,"#f4cf8f");p.rect(xx-4,yy,9,1,"#57424b");p.rect(xx,yy,2,3,"#f0d59b");
-    }else if(kind==="forge"){
-      p.line(xx-3,yy+3,xx+2,yy-3,"#d7b593",2);p.rect(xx,yy-4,5,3,"#eed7b2");
-    }else if(kind==="rift"){
-      p.poly([[xx,yy-5],[xx+4,yy],[xx,yy+5],[xx-4,yy]],"#b3accd");p.rect(xx-1,yy-2,2,5,"#604e74");
-    }else{
-      p.rect(xx-4,yy-3,4,7,"#e0c7a1");p.rect(xx+1,yy-3,4,7,"#c7a888");p.rect(xx,yy-2,1,7,"#785e55");
-    }
-  }
-  function warehouse(p,random) {
-    bricks(p,random,48,94,86,51,["#403842","#68535b","#725d62","#62535b"]);
-    roof(p,47,95,87,28,"#74575b","#53444f");
-    for(const x of [52,76,105,129])p.rect(x,94,3,50,"#44343f");
-    p.rect(48,111,86,3,"#48383f");p.line(53,110,75,96,"#4b3841",2);
-    windowLit(p,66,128);arch(p,96,144,21,29,"#302a32");
-    for(let x=89;x<=103;x+=4)p.rect(x,124,2,20,"#705348");
-    crate(p,51,133,12);crate(p,60,138,9);crate(p,118,132,13);sign(p,108,"box");
-  }
-  function forge(p,random) {
-    bricks(p,random,177,89,88,57,["#413944","#6c5558","#745b5b","#655359"]);
-    p.rect(242,54,12,36,"#61505a");p.rect(240,52,16,4,"#a18074");
-    roof(p,175,90,90,22,"#825950","#59454e");
-    arch(p,217,144,39,42,"#392b34");arch(p,218,144,25,28,"#884e47");
-    arch(p,218,144,15,18,"#ed985b");
-    p.poly([[212,143],[216,134],[218,137],[220,131],[223,143]],"#ffd483");
-    p.rect(183,122,9,21,"#5d4846");p.poly([[180,118],[199,118],[196,121],[191,122],[190,125],[184,125],[183,122]],"#a2a1a0");
-    p.rect(236,133,12,9,"#6b5044");p.rect(234,133,16,2,"#ac8c6b");sign(p,240,"forge");
-  }
-  function sanctum(p,random) {
-    bricks(p,random,333,97,65,49,["#423e50","#635c70","#746779","#655d72"]);
-    spire(p,342,117,63,12,"#62596d","#4b445b","#ab93a2");
-    spire(p,390,116,54,12,"#635b73","#494356","#aa94a3");
-    p.poly([[338,103],[366,66],[395,103]],"#6c6072");
-    p.line(338,103,366,66,"#bb9ca6",2);p.line(366,66,395,103,"#918195",2);
-    arch(p,366,145,40,52,"#998599");arch(p,366,145,33,46,"#413549");
-    arch(p,366,145,26,39,"#665574");arch(p,366,145,17,32,"#302b42");
-    p.circle(366,85,5,"#aa91ab");p.circle(366,85,3,"#695578");
-    sign(p,393,"rift");
-  }
-  function scriptorium(p,random) {
-    bricks(p,random,439,86,82,58,["#453c44","#896e63","#957967","#80675f"]);
-    roof(p,437,88,86,32,"#6c6670","#494454");windowLit(p,451,116);windowLit(p,502,115);
-    p.rect(445,90,3,53,"#57434a");p.rect(481,90,3,54,"#57434a");p.rect(516,90,3,54,"#57434a");
-    p.line(445,90,481,108,"#59454c",2);p.line(482,108,516,90,"#59454c",2);
-    arch(p,471,145,14,30,"#43333d");
-    p.poly([[487,123],[516,123],[526,133],[482,133]],"#ab8968");p.rect(486,142,34,3,"#6b5049");
-    for(let i=0;i<8;i++)p.rect(488+i*4,136-i%3,3,6+i%3,i%3?"#ad8b72":"#897c85");
-    sign(p,510,"book");
-  }
-  function street(){
-    const canvas=document.createElement("canvas"),p=brush(canvasContext(canvas)),random=rng(92481);
-    sky(p,random,true);
-    // Towers beyond the walls establish a horizon separate from the market street.
-    for(const [x,h,w] of [[7,49,12],[29,59,12],[146,47,12],[279,58,14],[306,76,12],[321,49,10],[421,57,11],[535,52,11],[564,67,15]])
-      spire(p,x,116,h,w,"#484554","#393949","#79717a");
-    p.rect(0,114,W,30,"#514854");
-    for(let x=0;x<W;x+=14)p.rect(x,110,6,5,"#514854");
-    for(const x of [19,147,288,322,422,553]){
-      pine(p,x,143,24+random()*18,"#353b41");
-      pine(p,x+10,142,20+random()*12,"#454849");
-    }
-    warehouse(p,random);forge(p,random);sanctum(p,random);scriptorium(p,random);
-    p.rect(0,144,W,21,"#625354");p.rect(0,148,W,17,"#726060");
-    for(let i=0;i<250;i++){const x=random()*W,y=146+random()*17;p.rect(x,y,2+random()*7,1,i%4?"#826e69":"#9a8278");}
-    bricks(p,random,0,165,W,19,["#352e37","#55464a","#5f4d50","#594b50"]);
-    p.rect(0,164,W,2,"#b49b86");p.rect(0,167,W,1,"#7a6462");
-    for(const x of [26,151,283,415,547]){
-      p.rect(x,119,3,26,"#463944");p.rect(x-3,118,9,2,"#a58972");
-      p.rect(x-2,111,7,7,"#483a42");p.rect(x-1,112,5,5,"#e6b47b");
-      p.rect(x+1,113,2,3,"#ffe9ab");p.rect(x,109,3,2,"#9e8475");
-    }
-    return canvas;
-  }
-
-  const hood = [
-    ".....dd....","....daadd..","...daaaabd.","..daabbbbbd","...dfffsdd.","...dffsfd..","...dbbffd..",
-    "..daaaaad..","..dbbiaabd.",".daaaiabffd",".daaaiaad..","daaaaiabbdd","dddbbbbdddd","..dbd.dbdd.","..dhh.dhhd."
-  ];
-  const helmet = [
-    "....ddd....","...dhhhd...","..dhhhhhd..",".dahhhbhhd.",".dddbbbddd.","..dffbsd...","..dffsfd...",
-    "..dhhahhd..",".dhhahahhd.","dbaaaibhbfd","dhhaaibbhfd",".dhhhibhd..",".ddbbbbbdd.","..dbd.dbd..","..dhh.dhhd."
-  ];
-  const brim = [
-    ".....dd....","....dadd...","...daaad...","..daaabbd..","..dbbibbd..","dbbbbbbbbd.",
-    "..dhfffsd..","..dhffsfd..","..dhbbffd..","..daaaaad..",".daaaiabfd.",".daaaiabffd","daaaaiaaabd","dddbbbbdddd","..dhh.dhh.."
-  ];
-  function figure(p,x,y,model,color) {
-    const rows=model==="knight"?helmet:model==="witch"?brim:hood;
-    const palette={d:ink,a:color||"#9684a2",b:"#514456",i:"#d7ad73",f:"#e5bd9b",s:"#a47a71",h:"#a8a1a2"};
-    rows.forEach((row,j)=>[...row].forEach((cell,i)=>{
-      if(palette[cell])p.rect(x-5+i,y-rows.length+j,1,1,palette[cell]);
-    }));
-  }
-  const townLayout=Object.freeze({width:W,height:H,npcBaseline:148});
-  function town(canvas,playerX=.5,character={},time=0,motion={},stations=[]) {
-    const ctx=canvasContext(canvas,2),p=brush(ctx),seconds=Number(time)||0;
-    townScenery??=street();
-    ctx.drawImage(townScenery,0,0);
-    for(const station of stations){
-      const x=Math.round(station.x*W);
-      figure(p,x,townLayout.npcBaseline,station.model,station.color);
-      p.rect(x-4,125,8,1,"#877360");p.rect(x-1,123,2,4,"#d8bf86");
-    }
-    for(let i=0;i<5;i++){
-      const rise=(seconds*(5+i)+i*3)%14;
-      p.rect(218+Math.round(Math.sin(rise+i)*3),136-rise,1,2,"#ffd48a");
-      p.rect(366+Math.round(Math.cos(rise+i)*7),132-rise,1,1,"#cab3dd");
-    }
-    const px=Math.round(Math.min(1,Math.max(0,playerX))*W);
-    p.rect(px-7,158,15,2,"#433943");GlalaArt.drawActor(ctx,px,158,motion.face===true||motion.face<0,character,{state:motion.moving?"walk":"idle",phase:(time*2.6)%1,clock:time});
-    p.poly([[px-3,125],[px+4,125],[px,129]],"#ffda87");
-  }
   // Sparse landmarks on a transparent layer. Reuse one bitmap per chapter
   // when the battle renderer redraws its backdrop every animation frame.
   function roomLayer(ctx,theme,width,height) {
@@ -438,5 +304,5 @@ globalThis.WorldArt = (() => {
     }
     ctx.drawImage(cachedLayers.get(key),0,0);
   }
-  return Object.freeze({ map,town,townLayout,roomLayer });
+  return Object.freeze({ map,roomLayer });
 })();

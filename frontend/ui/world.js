@@ -5,13 +5,15 @@ globalThis.WorldView=(()=>{
   function small(text){return el("small",text,"eyebrow")}
   function portrait(role){const c=el("canvas",undefined,"glala-portrait");GlalaArt.draw(c,role,"portrait");return c}
   function title(root,go){
-    const head=el("div",undefined,"screen-head");head.append(small("提塔尔耶拉　／　探求者导报"),el("h1","格拉拉的探求手记"),el("p","一切故事都从那次圣灵夜开始……"));
-    const cover=el("canvas",undefined,"title-art");MenuArt.draw(cover,"title");
+    const head=el("div",undefined,"screen-head");head.append(small("提塔尔耶拉　／　探求者导报"),el("h1","格拉拉的探求手记"),el("p","旧钟楼响了三声。格拉拉循着回音，踏上寻找同伴的旅程。"));
+    const cover=el("canvas",undefined,"title-art");WorldFolio.cover(cover);
     const actions=el("div",undefined,"actions");
     actions.append(button(Profile.slots.some(Boolean)?"继续游戏":"开始游戏",go,"primary"));
-    actions.append(button("行会演武",()=>location.assign("./?trial=1&foe=infantry")));
+    actions.append(button("行会演武",()=>location.assign("index.html?trial=1&foe=infantry")));
+    actions.append(button("共鸣回响图鉴",()=>location.assign("echoes.html")));
     actions.append(button("关卡编辑器",()=>location.assign("level-editor.html")));
-    root.replaceChildren(head,cover,actions);
+    const caption=el("div",undefined,"cover-place");caption.append(small("第一章　·　出发地"),el("b","水神都市　克罗索斯"));
+    root.replaceChildren(head,cover,actions,caption);
     if(Profile.problem)root.append(el("p",Profile.problem));
   }
   function slots(root,catalog,choose,back){
@@ -76,7 +78,7 @@ globalThis.WorldView=(()=>{
     }
 
     const screen=el("section",undefined,"expedition-atlas"),head=el("div",undefined,"atlas-head"),titles=el("div");
-    titles.append(small("提塔尔耶拉　／　阿莱西亚大沙海"),el("h1",readOnly?"查阅远征地图":"远征地图"));
+    titles.append(small("探求者手记　／　提塔尔耶拉"),el("h1",readOnly?"查阅远征地图":"远征地图"));
     head.append(titles);
     if(!readOnly&&actions.changeWorld){
       const world=WorldDifficulty.current(catalog,hero);
@@ -136,6 +138,8 @@ globalThis.WorldView=(()=>{
     });
 
     const side=el("aside",undefined,"atlas-folio"),regionCopy=el("section",undefined,"atlas-region-copy");
+    const print=WorldFolio.landmark(chapter.id);
+    if(print)regionCopy.append(print);
     regionCopy.append(small(chapterName(ci)),el("h2",chapter.name),el("p",chapter.description));
     const progress=el("span",cleared+" / "+stages.length+" 已通关","atlas-progress");
     regionCopy.append(progress);
@@ -196,16 +200,16 @@ globalThis.WorldView=(()=>{
     leave.dataset.confirmRetreat="";foot.append(stay,leave);screen.append(kept,pending,note,foot);root.replaceChildren(screen);
   }
   const stations=[
-    {x:.17,model:"scout",color:"#a79979",name:"仓库保管员",service:"共享仓库",line:"寄放在这里的回响，你的同伴也能来领取。"},
-    {x:.39,model:"knight",color:"#b18065",name:"城镇铁匠",service:"装备工坊",line:"让我看看你带回来的共鸣回响。"},
-    {x:.65,model:"scout",color:"#aa8bb7",name:"遗迹探求者",service:"秘境之门",line:"钟楼重新响起后，我们就在这里开启秘境。"},
-    {x:.84,model:"witch",color:"#8fa5a2",name:"行会记录员",service:"远征手记",line:"每一道归途灯，都值得记在《探求者导报》上。"}
+    {x:.17,skin:"106012",mark:"keeper",name:"奥索拉",service:"共享仓库",line:"寄放在这里的回响，你的同伴也能来领取。"},
+    {x:.39,skin:"106018",mark:"smith",name:"兰卡",service:"装备工坊",line:"让我看看你带回来的共鸣回响。"},
+    {x:.65,skin:"106014",mark:"surveyor",name:"茯苓",service:"秘境之门",line:"这些脚印很浅。出发前，我们再看一眼路线。"},
+    {x:.84,skin:"103077",mark:"clerk",name:"希露缇娅",service:"远征手记",line:"上一次远征的收获，也记在这本手记里了。"}
   ];
   function town(root,character,actions,start=.5){
     let x=start,goal=null,service=null,last=0,held=0,face=1,live=true,token;
     const art=el("canvas");art.tabIndex=0;art.setAttribute("aria-label","克罗索斯横版街区，A、D 行走，E 交谈");
     const caption=el("p"),speak=button("交谈",talk),street=el("div",undefined,"town-stage"),foot=el("div",undefined,"town-status");
-    const layout=WorldArt.townLayout;
+    const layout=WorldFolio.layout;
     art.width=layout.width;art.height=layout.height;
     street.append(art);
     const nearest=()=>stations.reduce((a,b)=>Math.abs(x-a.x)<Math.abs(x-b.x)?a:b);
@@ -219,7 +223,8 @@ globalThis.WorldView=(()=>{
       marker.setAttribute("aria-label",station.name+"，"+station.service);
       marker.style.left=Math.round(station.x*layout.width)/layout.width*100+"%";
       marker.style.top=layout.npcBaseline/layout.height*100+"%";
-      marker.append(el("span",station.service));street.append(marker);
+      const plate=el("span",station.service);plate.prepend(WorldFolio.badge(station.mark));
+      marker.append(el("small",station.name),plate);street.append(marker);
     }
     art.onclick=event=>{
       const bounds=art.getBoundingClientRect();
@@ -228,7 +233,10 @@ globalThis.WorldView=(()=>{
     const header=el("div",undefined,"atlas-head"),title=el("div");title.append(small("阿莱西亚大沙海　/　水神都市"),el("h1","克罗索斯"));
     header.append(title,button("返回大地图",actions.map));
     foot.append(caption,speak);
-    root.replaceChildren(header,street,foot,el("p","点人物前往交谈，点街道行走。键盘 A / D 移动，E 交谈。","town-hint"));
+    const track=el("div",undefined,"town-scroll");track.append(street);
+    const guide=el("nav",undefined,"town-guide");guide.setAttribute("aria-label","街区人物");
+    for(const s of stations){const link=button("",()=>walkTo(s.x,s));link.append(el("b",s.name),el("small",s.service));guide.append(link)}
+    root.replaceChildren(header,track,foot,el("p","点招牌前往交谈，点街道行走。键盘 A / D 移动，E 交谈。","town-hint"),guide);
     art.className="town-art";art.focus();
     function key(e,down){
       if(!live || !root.contains(art) || document.querySelector("#game-panel[open]"))return;
@@ -251,7 +259,12 @@ globalThis.WorldView=(()=>{
       }else held=0;
       const moving=x!==previousX;
       if(moving)face=x<previousX?-1:1;
-      WorldArt.town(art,x,character,now/1000,{face,moving},stations);
+      if(track.scrollWidth>track.clientWidth&&(moving||!track.dataset.located)){
+        const pos=x*street.offsetWidth;
+        if(pos-track.scrollLeft<50||pos-track.scrollLeft>track.clientWidth-50||!track.dataset.located)track.scrollLeft=pos-track.clientWidth/2;
+        track.dataset.located="1";
+      }
+      WorldFolio.town(art,x,character,now/1000,{face,moving},stations);
       const s=nearest(),close=Math.abs(x-s.x)<.055;
       const text=service?"前往"+service.service+"　·　"+service.name:close?s.name+"　「"+s.line+"」":"沿街寻找需要的服务。";
       if(caption.textContent!==text)caption.textContent=text;speak.disabled=!close;
