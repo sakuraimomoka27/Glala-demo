@@ -5,7 +5,9 @@ globalThis.GorgeArt=(()=>{
   function begin(d,player,platforms,clock,ready){
     const density=screenCanvas.width/W,height=screenCanvas.height/density;
     const left=Math.round(Math.min(d.width*SCALE-W,Math.max(0,player.x*SCALE-W*.4))*2)/2;
-    const lift=Math.round(Math.max(0,(player.y-2.15)*SCALE*.84)*2)/2;
+    // Track tall climbs only when the actor approaches the top of the viewport.
+    const footOnScreen=height-27-player.y*SCALE;
+    const lift=Math.round(Math.max(0,42-footOnScreen)*density)/density;
     ctx.save();ctx.setTransform(density,0,0,density,0,0);ctx.imageSmoothingEnabled=false;
     LevelPaint.background(ctx,d.background||"cliff",left,W,height,lift,d.assets);
     ctx.translate(-left,height-27-FLOOR+lift);

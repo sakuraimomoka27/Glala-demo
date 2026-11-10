@@ -111,7 +111,7 @@ globalThis.KrososArt=(()=>{
     const inside=p.x>=door.streetStart;
     const start=inside?door.streetStart*SCALE:0,end=(inside?door.width:door.streetStart)*SCALE;
     const left=snap(Math.min(end-W,Math.max(start,p.x*SCALE-W*.4)));
-    const lift=snap(Math.min(58,Math.max(0,(p.y-1.55)*14,33-(FLOOR-p.y*SCALE))));
+    const lift=snap(Math.min(58,Math.max(0,33-(FLOOR-p.y*SCALE))));
     const time=reduced.matches?0:clock;
     ctx.imageSmoothingEnabled=false;ctx.fillStyle=inside?"#a5937b":"#7fafba";ctx.fillRect(0,0,W,H);
     if(inside){street(door,left,lift,time);return left}

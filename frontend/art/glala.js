@@ -12,6 +12,7 @@ globalThis.GlalaArt = (() => {
   };
   portraitSheet.onerror=()=>waitingPortraits.clear();
   portraitSheet.src=new URL("portrait.png",source);fieldSheet.src=new URL("field.png",source);
+  let shadeSheet;
   const coat={
     ink:"#27212a", coal:"#342b2c", claw:"#453a39", bark:"#503831", umber:"#74513c",
     chestnut:"#956540", amber:"#bb8552", ochre:"#d5a56b", honey:"#e3bd84",
@@ -323,14 +324,16 @@ globalThis.GlalaArt = (() => {
     const phase=Number.isFinite(pose.phase)?pose.phase:pose.state==="walk"?(clock*2.6)%1:0;
     return sequence[Math.min(sequence.length-1,Math.max(0,Math.floor(phase*sequence.length)))];
   }
-  function drawActor(ctx,x,y,face,character,pose,worldScale=1) {
+  function drawActor(ctx,x,y,face,character,pose,worldScale=1,shade=false) {
     const left=face===true||(typeof face==="number"&&face<0);
     ctx.save();ctx.translate(Math.round(x),Math.round(y));
     ctx.scale(left?-worldScale:worldScale,worldScale);
     ctx.imageSmoothingEnabled=false;
-    if(ready(fieldSheet)){
+    if(shade&&!shadeSheet){shadeSheet=new Image();shadeSheet.src=new URL("../effects/glala-shade.png",source)}
+    const sheet=shade&&ready(shadeSheet)?shadeSheet:fieldSheet;
+    if(ready(sheet)){
       const frame=fieldFrame(pose);
-      ctx.drawImage(fieldSheet,(frame%8)*80,Math.floor(frame/8)*80,80,80,-20,-37,40,40);
+      ctx.drawImage(sheet,(frame%8)*80,Math.floor(frame/8)*80,80,80,-20,-37,40,40);
     }else ctx.drawImage(poseFrame(pose),-anchorX,-anchorY);
     ctx.restore();
   }

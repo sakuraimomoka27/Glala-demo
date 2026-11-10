@@ -16,7 +16,8 @@ globalThis.TitanCombat=(()=>{
       }
       if(b.kind!=="shadow")return;
       if(state.shades.length>=2)state.shades.shift();
-      state.shades.push({x:p.x,y:p.y,base:p.y,hp:b.shadowHp,life:b.shadowLife,phase:0,grace:.25,face:p.dir,target:null,mode:"wait",seek:0,jumps:0});fx(h,"impact",p.x,p.y,"","#ac91d5",.6);
+      state.shades.push({x:p.x,y:p.y,base:p.y,hp:b.shadowHp,life:b.shadowLife,phase:0,grace:.25,face:p.dir,target:null,mode:"wait",seek:0,jumps:0});
+      fx(h,"clip",p.x,p.y,"shadeAura","",1.35);
     }
     function ignite(e,h){
       if(b.kind!=="burn"||!e?.hp)return;
@@ -26,7 +27,7 @@ globalThis.TitanCombat=(()=>{
       e.burnStacks=!burning?1:stacks<rates.length&&Math.random()<Math.min(1,rates[stacks]+b.ailmentHit)?stacks+1:stacks;
       e.burnLeft=b.burnTime;
       if(!burning)e.burnTick=.5;
-      fx(h,"impact",e.x,(e.baseY||0)+.6,"","#f39454",.75);
+      fx(h,"clip",e.x,(e.baseY||0)+.22,"burn","",1.05);
     }
     function shield(p,h){if(b.kind==="earth"&&state.shieldWait<=0){state.shield=1;state.shieldWait=b.shieldPeriod;fx(h,"num",p.x,p.y+1,"护盾","#caaf70")}}
     function absorb(){if(!state.shield)return false;state.shield=0;return true}
@@ -58,7 +59,10 @@ globalThis.TitanCombat=(()=>{
           state.period+=b.kind==="shot"?b.shotPeriod:b.slashPeriod;
           if(b.kind==="shot"&&state.bolts.length<12){const y=p.y+.46;
             state.bolts.push({x:p.x,y,dir:p.dir,vy:0,life:1.5});
-          }else if(b.kind==="slash"){state.flash=.23;for(const e of enemies)if(e.hp&&(e.guard?bodyDistance(e,p.x,p.y+.45):Math.hypot(e.x-p.x,p.y-(e.baseY||0)-.12))<b.slashRadius)h.hit(e,b.slashDamage,"slash",e.guard?{x:p.x,y:p.y+.45,dir:p.dir}:undefined)}
+          }else if(b.kind==="slash"){
+            state.flash=.23;state.slashDir=p.dir;
+            for(const e of enemies)if(e.hp&&(e.guard?bodyDistance(e,p.x,p.y+.45):Math.hypot(e.x-p.x,p.y-(e.baseY||0)-.12))<b.slashRadius)h.hit(e,b.slashDamage,"slash",e.guard?{x:p.x,y:p.y+.45,dir:p.dir}:undefined);
+          }
         }
         if(b.kind==="shot")for(let i=state.bolts.length-1;i>=0;i--){
           const m=state.bolts[i];m.life-=dt;m.x+=dt*7.5*m.dir;m.y+=dt*m.vy;
@@ -86,7 +90,7 @@ globalThis.TitanCombat=(()=>{
         if(s.phase<1)return;
         s.base=s.y=s.endY;s.mode="wait";s.seek=0;
         if(safe(s.target)&&Math.abs(s.base-(s.target.baseY||0))<.85 && Math.abs(s.target.x-s.x)<=b.shadowRadius){
-          h.hit(s.target,b.shadowDamage,"shadow");state.shadeHits++;s.grace=.28;fx(h,"impact",s.x,s.y,"","#aa89d3",1);
+          h.hit(s.target,b.shadowDamage,"shadow");state.shadeHits++;s.grace=.28;
         }
         s.cooldown=.12;return;
       }

@@ -76,9 +76,16 @@ globalThis.FieldArt=(()=>{
     const c=FieldCombat.profile(e.id,e.kind),color=palettes[c.ink],reach=e.headHeight?(c.fullReach??c.reach):c.reach;
     if(e.swing==="tell")warning(x,y,e.swingDir,reach,clamp(1-e.swingTime/c.windup),color);
     if(e.swing==="cut"){
-      const t=clamp(1-e.swingTime/c.active);ctx.save();ctx.translate(x,y);ctx.scale(e.swingDir,1);
+      const t=clamp(1-e.swingTime/c.active);
       const height=e.headHeight?29:20;
-      ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6))),0,-height+3,reach*SCALE*1.13,height);ctx.restore();
+      const width=reach*SCALE*1.13,stone=c.ink==="stone";
+      const drawn=c.ink!=="claw"&&globalThis.EffectLibrary?.draw(ctx,stone?"shockwave":"slash",
+        x+e.swingDir*width*.46,stone?y:y-height*.42,
+        {progress:t,width,height:height*(stone?1.65:1.35),dir:e.swingDir,hostile:true});
+      if(!drawn){
+        ctx.save();ctx.translate(x,y);ctx.scale(e.swingDir,1);
+        ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6))),0,-height+3,width,height);ctx.restore();
+      }
     }
     if(e.kind==="bow"||e.id==="watcher"){
       const compact=!e.headHeight&&e.id!=="watcher",yy=y-(compact?.42:c.portY)*SCALE;

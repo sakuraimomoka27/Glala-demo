@@ -1,0 +1,23 @@
+:root{color-scheme:dark;--bg:#17171e;--panel:#24222c;--line:#625747;--gold:#efcd8e;--ink:#eee4d2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"Microsoft YaHei",sans-serif}
+header,main{max-width:1080px;margin:auto}
+header,.heading,nav,.controls,.reference{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header{padding:26px 22px 18px;border-bottom:3px double var(--line)}
+h1,h2{margin:0;font-family:Georgia,"SimSun",serif}h1{font-size:28px}h2{font-size:21px}
+header small,code,output,aside button small{font-family:Consolas,monospace}header small,.heading code{color:#bdb098}
+main{display:grid;grid-template-columns:214px minmax(0,1fr);gap:24px;padding:20px 22px}
+aside{padding-right:17px;border-right:1px solid var(--line)}
+aside h2{font-size:16px;color:var(--gold);margin-bottom:10px}
+button,select,nav a{background:#2b2932;border:1px solid #63584b;color:var(--ink);padding:6px 11px;font:inherit;cursor:pointer;text-decoration:none}
+button:hover,button:focus-visible,select:focus-visible,nav a:hover,button[aria-pressed=true]{border-color:var(--gold);color:#fff0c8;background:#42362d}
+#clips{display:grid;gap:3px}
+#clips button{display:flex;flex-direction:column;text-align:left;padding:5px 10px}
+aside button small{font-size:11px;color:#b4aaa1}.heading{margin-bottom:12px}
+#stage{display:block;width:100%;aspect-ratio:512/250;border:1px solid #605748;image-rendering:pixelated;background:#141820}
+.controls,.reference{flex-wrap:wrap;background:var(--panel);padding:10px;margin-top:9px}
+.controls label{display:flex;align-items:center;gap:8px;flex:1}input{min-width:65px;flex:1;accent-color:#edc789}
+#strip{display:flex;gap:5px;margin-top:12px}#strip button{padding:1px;min-width:0;flex:1;background:#20232c}
+#strip canvas{display:block;width:100%;max-height:82px;object-fit:contain;image-rendering:pixelated}
+.reference code{overflow-wrap:anywhere;color:#c5e1d9}.reference button{white-space:nowrap}
+@media(max-width:720px){header{padding:14px;align-items:flex-end}nav{gap:4px}nav a{padding:4px 6px}main{grid-template-columns:1fr;padding:12px;gap:14px}aside{padding:0;border:0}#clips{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}.reference{align-items:flex-start}}

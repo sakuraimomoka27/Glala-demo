@@ -20,6 +20,7 @@ function actor(rows,x,y,face,color,flash=false){
 function draw({clock,cameraKick,enemies,sentinels=[],total,player,character,keys,started,arrows,effects,finished,kills,aim,door,exitReady,pose,titan,build,observatory,elementBoss,roomPlatforms}){
  let viewLeft=0;
  const gorge=door?.scene==="gorge",smallWorld=gorge||door?.scene==="krosos";
+ const actorScale=smallWorld ? .55 : 1;
  if(gorge){
    viewLeft=GorgeArt.begin(door,player,roomPlatforms,clock,exitReady);
    if(elementBoss?.hp>0&&Math.abs(elementBoss.x-player.x)<26)ElementArt.body(elementBoss,elementBoss.x*SCALE,FLOOR-elementBoss.guard.lift*SCALE);
@@ -46,6 +47,10 @@ function draw({clock,cameraKick,enemies,sentinels=[],total,player,character,keys
  for(let i=0;i<19;i++){let x=(i*97+clock*3)%W,y=151-(i*29+clock*(4+i%3))%104;box(ctx,x,y,1,1,i%3?"#b79273":"#e1b483")}
  }
  }
+ // Dust stays at the original foot contact, behind silhouettes and weapon tells.
+ for(const effect of effects){
+   if(effect.kind==="takeoffCloud"||effect.kind==="landingCloud")CombatArt.plume(effect,actorScale);
+ }
  for(const e of enemies)if(e.guard)GuardianArt.field(e);
  for(const s of sentinels)if(s.x*SCALE>=viewLeft-50&&s.x*SCALE<=viewLeft+W+50)FieldArt.watcher(s,clock,player.x);
  let deathSprites=0;
@@ -71,26 +76,34 @@ function draw({clock,cameraKick,enemies,sentinels=[],total,player,character,keys
  if(titan){
    for(const blade of titan.blades){
      const x=Math.round(blade.x*SCALE),y=Math.round(FLOOR-blade.y*SCALE);
-     ctx.save();ctx.translate(x,y);ctx.scale(blade.dir,1);
-     PixelFX.ribbon(-2,0,12,7,blade.age*22,3.9,4,["","#627f82","#c0eee5","#ffefae"]);
-     box(ctx,-17,-1,12,1,"#96c4b1");ctx.restore();
+     EffectLibrary.draw(ctx,"returningBlade",x,y,{age:blade.age,width:12+2*build.bladeSize*SCALE,dir:blade.dir});
    }
    for(const b of titan.bolts){
-     const xx=b.x*SCALE,yy=FLOOR-b.y*SCALE,r=Math.max(2,Math.round((build.shotSize||.32)*8));
-     ctx.save();ctx.translate(xx,yy);ctx.scale(b.dir,1);
-     PixelFX.fill([[-20,0],[-4,-r],[3,-r],[8,0],[2,r],[-5,r]],"#398ca7");
-     PixelFX.fill([[-13,0],[1,-r+1],[7,0],[1,r-1]],"#c1fff9");ctx.restore();
+     EffectLibrary.draw(ctx,"waterArrow",b.x*SCALE,FLOOR-b.y*SCALE,{
+       age:1.5-b.life,width:24+1.25*build.shotSize*SCALE,dir:b.dir
+     });
    }
-   for(const s of titan.shades){ctx.save();ctx.globalAlpha=.52;GlalaArt.drawActor(ctx,Math.round(s.x*SCALE),Math.round(FLOOR-s.y*SCALE),s.face<0,character,{state:s.mode==="wait"?"idle":s.phase<.20?"launch":s.phase<.68?"apex":"fall",phase:s.phase,clock},smallWorld ? .55 : 1);ctx.restore()}
+   for(const s of titan.shades){
+     const x=s.x*SCALE,y=FLOOR-s.y*SCALE;
+     const pose={state:s.mode==="wait"?"idle":s.phase<.20?"launch":s.phase<.68?"apex":"fall",phase:s.phase,clock};
+     const alpha=Math.min(1,s.life/.2);
+     EffectLibrary.draw(ctx,"shadeAura",x,y,{age:clock,width:54*actorScale,dir:s.face,alpha});
+     ctx.save();
+     if(s.mode==="hop"){
+       ctx.globalAlpha=.28*alpha;
+       GlalaArt.drawActor(ctx,x-s.face*7*actorScale,y+2*actorScale,s.face<0,character,pose,actorScale,true);
+     }
+     ctx.globalAlpha=.86*alpha;
+     GlalaArt.drawActor(ctx,x,y,s.face<0,character,pose,actorScale,true);
+     ctx.restore();
+   }
    if(titan.flash>0){const radius=Math.round(build.slashRadius*SCALE),x=player.x*SCALE,y=FLOOR-(player.y+.35)*SCALE;
      const phase=1-titan.flash/.23;
-     ctx.save();ctx.globalAlpha=Math.min(1,titan.flash*12);ctx.translate(x,y);ctx.scale(player.dir,1);
-     PixelFX.ribbon(0,0,radius,radius*.70,-2.8+phase*2.1,4.5,7,["","#ad7d4c","#edb76d","#fff2b7"]);
-     PixelFX.ribbon(0,1,radius*.84,radius*.56,-2.5+phase*2.1,3.2,2,["","#e5c891","#ffe8a1","#fff6cd"]);ctx.restore();}
-   if(titan.shield){const x=player.x*SCALE,y=FLOOR-player.y*SCALE;box(ctx,x-12,y-12,2,10,"#d3ba83");box(ctx,x+11,y-12,2,10,"#d3ba83");}
+     EffectLibrary.draw(ctx,"slash",x,y,{progress:phase,width:radius*2.35,height:radius*1.6,dir:titan.slashDir});
+   }
    if(build.kind==="burn")for(const e of enemies){if(e.hp>0&&e.burnLeft>0&&Math.abs(e.x-player.x)<21){
      const x=e.x*SCALE,y=FLOOR-(e.baseY||0)*SCALE;
-     PixelFX.stamp("fire",x,y-1,(clock*1.8+e.poseOffset*.08)%1,20+2*e.burnStacks);
+     EffectLibrary.draw(ctx,"burn",x,y,{age:clock+e.poseOffset*.08,width:28+5*e.burnStacks});
    }}
  }
  const p=player,px=Math.round(p.x*SCALE),py=Math.round(FLOOR-p.y*SCALE);
@@ -111,14 +124,17 @@ function draw({clock,cameraKick,enemies,sentinels=[],total,player,character,keys
  if(smallWorld){if(Number.isFinite(shadowY))box(ctx,px-5,shadowY-1,10,1,overWater&&shadowY>FLOOR?"#347578":"#1a1a22");}
  else box(ctx,px-8,FLOOR-2,16,2,"#1a1a22");
  CombatArt.descent(p,px,py,smallWorld);
- if(globalThis.GlalaArt)CombatArt.glala(p,px,py,character,pose,smallWorld,clock);else actor((avatars[character.sprite]||hero),px-10,py-(avatars[character.sprite]||hero).length,p.dir<0,character.color);
+ if(globalThis.GlalaArt)CombatArt.glala(p,px,py,character,pose,actorScale,clock);else actor((avatars[character.sprite]||hero),px-10,py-(avatars[character.sprite]||hero).length,p.dir<0,character.color);
+ if(titan?.shield)EffectLibrary.draw(ctx,"shield",px,py-15*actorScale,{age:clock,width:59*actorScale});
  for(const a of arrows)FieldArt.projectile(a);
  let featured=null;
- for(const e of effects){let x=e.x*SCALE,y=FLOOR-e.y*SCALE,t=e.age/e.life;
+ for(const e of effects){
+  if(e.kind==="takeoffCloud"||e.kind==="landingCloud")continue;
+  let x=e.x*SCALE,y=FLOOR-e.y*SCALE,t=e.age/e.life;
   if(e.kind==="splash"){for(const side of [-1,1]){box(ctx,x+side*(4+10*t),y,5,1,"#a3dace");box(ctx,x+side*(2+6*t),y-7*Math.sin(Math.PI*t),2,2,"#d4f0de")}}
+  else if(e.kind==="clip")EffectLibrary.draw(ctx,e.txt,x,y,{progress:t,width:e.radius*SCALE,dir:e.dir,hostile:e.hostile,alpha:Math.min(1,(1-t)*4)});
   else if(e.kind==="wave")CombatArt.wave(e);
   else if(e.kind==="burst")CombatArt.burst(e);
-  else if(e.kind==="stepDust")CombatArt.dust(e);
   else if(e.kind==="projectileHit")FieldArt.hit(e);
   else if(e.kind==="impact"){
     for(let j=0;j<6;j++){

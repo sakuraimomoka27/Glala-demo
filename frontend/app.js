@@ -16,9 +16,14 @@
   });
   const orb=(name,kind)=>{
     const node=el("div",undefined,"orb "+kind),sphere=el("i"),label=el("b");
-    node.append(sphere,el("span",name),label);return {node,sphere,label};
+    const title=el("span",name);
+    node.append(sphere,title,label);return {node,sphere,label,title};
   };
   const life=orb("生命","life-orb"),energy=orb("体力","energy-orb");
+  const healthMeter=el("span",undefined,"life-meter"),shieldBadge=el("small","护盾 ×1","shield-badge");
+  healthMeter.setAttribute("aria-hidden","true");shieldBadge.hidden=true;
+  shieldBadge.title="抵消下一次受到的伤害";shieldBadge.setAttribute("role","status");
+  life.title.append(shieldBadge);life.node.append(healthMeter);
   const reduceMotion=globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
   const menu=el("nav",undefined,"dock-menu");
   const progress=el("div",undefined,"character-progress"),levelLabel=el("small"),xpBar=el("progress");
@@ -48,7 +53,16 @@
     levelLabel.textContent="等级 "+status.level+"　"+(status.capped?"已满级":status.xp+" / "+status.needed+" 经验");
     xpBar.max=status.capped?1:status.needed;xpBar.value=status.capped?1:status.xp;
   }
-  function vitals(hp,maxHp,stamina,maxStamina){
+  function vitals(hp,maxHp,stamina,maxStamina,shield=0){
+    const shielded=shield>0;
+    if(life.shield!==shield){
+      if(life.shield>0&&!shielded&&scene==="fight"&&!reduceMotion?.matches){
+        healthMeter.animate?.([{boxShadow:"0 0 0 2px #ffe6ac"},{boxShadow:"none"}],{duration:200,easing:"steps(4,end)"});
+      }
+      life.shield=shield;
+      shieldBadge.hidden=!shielded;
+      life.node.classList.toggle("shielded",shielded);
+    }
     for(const [orb,current,max] of [[life,hp,maxHp],[energy,stamina,maxStamina]]){
       const value=Math.max(0,Math.min(max,Math.ceil(current)));
       const display=value+" / "+max;
@@ -57,7 +71,9 @@
           orb.pulse?.cancel();
           orb.pulse=orb.sphere.animate?.([{filter:"brightness(1.65)"},{filter:"brightness(1)"}],{duration:190,easing:"steps(4,end)"});
         }
-        orb.label.textContent=display;orb.sphere.style.setProperty("--fill",Math.round(value/max*100)+"%");
+        const fill=Math.round(value/max*100)+"%";
+        orb.label.textContent=display;orb.sphere.style.setProperty("--fill",fill);
+        if(orb===life)healthMeter.style.setProperty("--hp-fill",fill);
       }
       orb.value=value;
     }
@@ -80,6 +96,7 @@
   function view(next){
     close();if(stopTown){stopTown();stopTown=null}
     scene=next;life.value=energy.value=undefined;battle.hidden=next!=="fight";lobby.hidden=!battle.hidden;
+    if(next!=="fight"){life.shield=0;shieldBadge.hidden=true;life.node.classList.remove("shielded")}
     dock.hidden=!["map","town","fight","report","rift-report","defeat"].includes(next)||(training&&next!=="fight");
     menu.hidden=training;progress.hidden=training;
     if(next!=="fight")Room.stop();

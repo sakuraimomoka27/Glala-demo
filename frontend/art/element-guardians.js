@@ -145,11 +145,13 @@ globalThis.ElementArt=(()=>{
           const spark=(u*1.6+(i+1)*.29)%1;
           PixelFX.line(cx+bend,y-height*spark,cx+bend+1,y-height*spark-3,k[2],.65);
         }
-        PixelFX.stamp("fire",x,y,u,Math.min(h*1.15,2.1*r+9));
+        if(!globalThis.EffectLibrary?.draw(ctx,"burn",x,y,{age:u,width:2.1*r+9,height:h*1.16,hostile:true}))
+          PixelFX.stamp("fire",x,y,u,Math.min(h*1.15,2.1*r+9));
         PixelFX.ribbon(x,y,r+2,4,u*3,3.9,2,k);break;
       }
       case "spear":case "sickle":{
-        PixelFX.stamp("water",x-dir*3,y+7,u,17,dir<0);
+        if(!globalThis.EffectLibrary?.draw(ctx,"waterArrow",x,y,{age:u,width:Math.max(19,2*r),dir,hostile:true}))
+          PixelFX.stamp("water",x-dir*3,y+7,u,17,dir<0);
         const a=dir>0?-1.45:1.65;
         PixelFX.ribbon(x-dir*4,y,r,Math.max(6,h+3),a,2.9,4,k);
         for(let i=0;i<3;i++){

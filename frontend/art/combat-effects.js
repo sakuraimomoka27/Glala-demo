@@ -1,6 +1,12 @@
 // Draw in the same logical pixels as the actors. Only the featured drop needs a miniature.
 globalThis.CombatArt=(()=>{
   const reduced=globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
+  const plumeURL=new URL("jump-plumes.png",document.currentScript.src);
+  let plumeSheet;
+  function preloadPlumes(){
+    if(plumeSheet)return;
+    plumeSheet=new Image();plumeSheet.src=plumeURL;
+  }
   const shakeButton=document.getElementById("camera-shake"),preference="ashen:combat-camera-shake";
   let shakeOverride=null;
   try{
@@ -80,20 +86,42 @@ globalThis.CombatArt=(()=>{
   function burst(e){
     const t=Math.min(.999,e.age/e.life),frame=Math.floor(t*8),scale=e.radius*(reduced?.matches ? .78 : 1);
     const x=Math.round(e.x*SCALE),y=Math.round(FLOOR-e.y*SCALE);
+    const hitClip=hitClips[e.txt];
+    if(hitClip&&EffectLibrary.draw(ctx,hitClip,x,y,{progress:t,width:40*scale,dir:e.dir,alpha:Math.min(1,(1-t)*4)})){
+      if(e.txt==="core")PixelFX.stamp("fire",x,y+6,t,42*scale,e.dir<0);
+      return;
+    }
     const stamp=elementalStamps[e.txt];
     if(stamp)PixelFX.stamp(stamp,x,y+6,t,Math.round((e.txt==="core"?54:34)*scale),e.dir<0);
     ctx.save();ctx.translate(x,y);ctx.scale(e.dir<0?-scale:scale,scale);
     ctx.globalAlpha=t>.73?Math.max(0,(1-t)/.27):1;
     ctx.drawImage(contactCell(e.txt,frame),-40,-40,80,80);ctx.restore();
   }
-  function dust(e){
-    const t=e.age/e.life,x=e.x*SCALE,y=FLOOR-e.y*SCALE,reach=e.radius*(4+19*t);
-    ctx.save();ctx.globalAlpha=1-t;
-    for(const side of [-1,1]){
-      const edge=x+side*reach;
-      box(ctx,edge-3,y-2,7,2,"#635960");box(ctx,edge-2,y-3,5,2,e.color);
-      box(ctx,x+side*reach*.64,y-3-4*Math.sin(Math.PI*t),3,2,e.color);
+  const hitClips={stomp:"stompHit",core:"stompHit",shot:"waterHit",shadow:"shadeStrike",burn:"burn",slash:"slash",blade:"waterHit"};
+  const plumeTiming={
+    takeoffCloud:[.08,.22,.43,.65,.84,1],landingCloud:[.11,.27,.51,.73,.89,1]
+  };
+  function plume(e,actorScale){
+    const t=Math.min(.999,e.age/e.life),takeoff=e.kind==="takeoffCloud";
+    const frame=plumeTiming[e.kind].findIndex(end=>t<end);
+    const row=e.txt==="surface"?0:e.txt==="ground"?1:2;
+    const x=e.x*SCALE,y=FLOOR-e.y*SCALE;
+    if(takeoff&&e.txt==="air"){
+      const width=178*e.radius*actorScale;
+      if(EffectLibrary.draw(ctx,"airStep",x,y,{progress:t,width,dir:e.dir,alpha:Math.min(1,(1-t)*5)}))return;
     }
+    if(!plumeSheet?.naturalWidth){
+      if(!takeoff)PixelFX.ring(x,y,3+28*t*e.radius,2+2*t,"#eed8ad");
+      return;
+    }
+    // Snap the pivot in backing pixels, also on zoomed and vertically scrolling stages.
+    const m=ctx.getTransform(),cx=Math.round(m.a*x+m.c*y+m.e),cy=Math.round(m.b*x+m.d*y+m.f);
+    const width=Math.round((takeoff?84*actorScale:110)*e.radius*Math.hypot(m.a,m.b));
+    const height=Math.round(width/2),opacity=e.txt==="air" ? .73 : 1;
+    ctx.save();ctx.setTransform(e.dir<0?-1:1,0,0,1,cx,cy);ctx.imageSmoothingEnabled=false;
+    ctx.globalAlpha=opacity*Math.min(1,(1-t)/.18);
+    const anchor=row===2?78:96;
+    ctx.drawImage(plumeSheet,frame*224,row*112,224,112,-Math.round(width/2),-Math.round(height*anchor/112),width,height);
     ctx.restore();
   }
   function descent(p,x,y,small){
@@ -108,6 +136,8 @@ globalThis.CombatArt=(()=>{
   }
   function wave(e){
     const t=e.age/e.life,x=e.x*SCALE,y=FLOOR-e.y*SCALE,r=Math.max(3,e.radius*SCALE*t);
+    const width=2.12*e.radius*SCALE;
+    if(EffectLibrary.draw(ctx,"shockwave",x,y,{progress:t,width,height:Math.min(width,92),hostile:e.hostile,alpha:Math.min(1,(1-t)*5)}))return;
     ctx.save();ctx.globalAlpha=Math.min(1,(1-t)*5);
     PixelFX.ring(x,y,r,3+4*Math.sin(t*Math.PI),"#dcaa68");
     for(const s of [-1,1]){
@@ -118,10 +148,19 @@ globalThis.CombatArt=(()=>{
     }
     ctx.restore();
   }
+  let lastDrawnKick=null,firstDrawAge=0;
   function shake(kick){
     if(!kick||!shakeEnabled())return;
-    const t=Math.min(1,kick.age/kick.life),gain=kick.power*(1-t)**1.4*screenCanvas.width/W;
-    const dx=Math.round(kick.dir*gain*Math.cos(t*15)),dy=Math.round(gain*Math.cos(t*19+.4)*.76);
+    // Several physics steps can precede a display frame. Show the initial impact
+    // at full strength once, then let it settle within the original time window.
+    if(kick!==lastDrawnKick){lastDrawnKick=kick;firstDrawAge=kick.age}
+    const t=Math.min(1,(kick.age-firstDrawAge)/Math.max(.001,kick.life-firstDrawAge));
+    const gain=kick.power*(1-t)**1.4*screenCanvas.width/W;
+    const vertical=kick.axis==="drop";
+    const dx=Math.round(kick.dir*gain*Math.cos(t*15)*(vertical ? .29 : 1));
+    const dy=vertical
+      ? Math.round(gain*Math.cos(t*13))
+      : Math.round(gain*Math.cos(t*19+.4)*.76);
     if(!dx&&!dy)return;
     // Shift the finished native frame after the active room's pan and zoom.
     // Extend the edge pixel into the exposed border; DOM controls keep their positions.
@@ -133,8 +172,8 @@ globalThis.CombatArt=(()=>{
     ctx.restore();
   }
   let hurtSprite;
-  function glala(p,x,y,role,pose,small,time){
-    const age=time-(p.hurtAt??-Infinity),scale=small ? .55 : 1;
+  function glala(p,x,y,role,pose,scale,time){
+    const age=time-(p.hurtAt??-Infinity);
     if(age<.16){
       hurtSprite??=document.createElement("canvas");
       if(hurtSprite.width!==80){hurtSprite.width=80;hurtSprite.height=80}
@@ -207,5 +246,5 @@ globalThis.CombatArt=(()=>{
     ctx.fillStyle=rank===4?crest:e.color;ctx.fillText(e.txt,cx,top+9,captionWidth-6);
     ctx.restore();
   }
-  return {drop,burst,dust,descent,wave,shake,glala};
+  return {drop,burst,preloadPlumes,plume,descent,wave,shake,glala};
 })();

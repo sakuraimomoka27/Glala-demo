@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>战斗特效库 · 格拉拉的探求手记</title>
+  <link rel="stylesheet" href="frontend/styles/effect-library.css">
+</head>
+<body>
+  <header><div><small>格拉拉的探求手记</small><h1>战斗特效库</h1></div><nav><a href="level-editor.html">关卡编辑器</a><a href="./">返回游戏</a></nav></header>
+  <main>
+    <aside><h2>动画目录</h2><div id="clips"></div></aside>
+    <section aria-labelledby="title">
+      <div class="heading"><div><h2 id="title"></h2><code id="key"></code></div>
+        <label>阵营 <select id="side"><option value="allied">我方</option><option value="hostile">敌方</option></select></label>
+      </div>
+      <canvas id="stage" width="512" height="250" aria-label="像素特效预览"></canvas>
+      <div class="controls"><button id="play"></button><button id="direction">朝向　→</button>
+        <label>逐帧 <input id="scrub" type="range" min="1" step="1"></label><output id="frame"></output>
+      </div>
+      <div id="strip" aria-label="动画帧"></div>
+      <div class="reference"><code id="sample"></code><button id="copy">复制调用</button></div>
+    </section>
+  </main>
+  <script src="frontend/art/effect-library.js"></script><script src="frontend/ui/effect-library.js"></script>
+</body>
+</html>

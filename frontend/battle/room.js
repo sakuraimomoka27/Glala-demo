@@ -13,7 +13,7 @@ let observatory=null,elementBoss=null,roomPlatforms=[];
 let inStreet=false,mooring,waterWait=0;
 let tourTile=null;
 let sentinels=[];
-let cameraKick=null, hitPause=0;
+let cameraKick=null, hitPauseTicks=0;
 const struckThisDescent=new Set();
 const entrance=()=>options.door?.scene==="krosos"?options.door:null;
 const gorge=()=>options.door?.scene==="gorge"?options.door:null;
@@ -43,7 +43,7 @@ function updateTrial(){
 }
 function report(msg){ byId("report").textContent=msg; }
 function reset(override) {
-  cameraKick=null;hitPause=0;
+  cameraKick=null;hitPauseTicks=0;
   settledResult=null;exitReady=false;floorHeight=0;panelLocked=false;defeatCause="";
   struckThisDescent.clear();
   byId("leave").textContent=options.routeNumber?"撤离本关…":"撤离结算";
@@ -79,6 +79,7 @@ function reset(override) {
   if(inStreet)player.x=entrance().streetStart+1.5;
   const authored=gorge()?.authored?gorge():null;
   if(authored){player.x=authored.start.x;player.y=floorHeight=authored.start.y;exitReady=total===0}
+  player.fallPeakY=player.y;
   mooring={x:player.x,y:player.y};
   const order=level.formation?.split(/[,，]/).map(s=>s.trim());
   enemies=Array.from({length:total},(_,i)=>{
@@ -135,6 +136,8 @@ function reset(override) {
     if(options.bossDrill)byId("trial-instructions").textContent="从左侧断桥登上双轨炮，随炮臂升高，跃击开启的肩核。";
   }
    globalThis.AtlasArt?.configure(!!observatory);
+   globalThis.CombatArt?.preloadPlumes();
+   globalThis.EffectLibrary?.preload();
    if(options.door?.scene==="krosos")globalThis.KrososArt?.preload();
    if(gorge())globalThis.GorgeArt?.preload();
   if(elementBoss)globalThis.ElementArt?.configure(elementBoss);
@@ -145,7 +148,7 @@ function reset(override) {
 function syncHud(){
  byId("hp").textContent=Math.ceil(player.hp)+" / "+(loadout.maxHp??character.hp);
  byId("kills").textContent=kills+" / "+total;
- options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax);
+ options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax,titan?.state.shield||0);
 }
 function spend(cost) {
  if(player.stamina+1e-7<cost)return false;
@@ -175,14 +178,56 @@ function creditKills(){
 function fx(kind,x,y,txt="",color="#ffd98b",radius=1.25){
  if(effects.length>=96)effects.splice(effects[0]===featuredDrop?1:0,1);
  const effect={kind,x,y,txt,color,radius,age:0,life:kind==="projectileHit"?.20:kind==="wave"?.32:kind==="impact"?.22:kind==="strike"?.23:kind==="coin"?.42:.82};
+ if(kind==="clip")effect.life=globalThis.EffectLibrary?.clips[txt]?.seconds??.32;
  effects.push(effect);return effect;
 }
-// One impulse per contact. An area hit takes the strongest impulse instead of
-// adding the duration of every target. The timer runs independently of physics.
-function impulse(power,dir,hold=0){
- hitPause=Math.max(hitPause,hold);
- if(!cameraKick || cameraKick.power*(1-cameraKick.age/cameraKick.life)<=power){
-   cameraKick={power,dir:dir||1,age:0,life:.09+power*.018};
+function holdMotion(seconds){
+ hitPauseTicks=Math.max(hitPauseTicks,Math.ceil(seconds/step));
+}
+// Overlapping hits take the strongest kick and longest hold rather than stacking.
+function impulse(power,dir,hold=0,axis="hit"){
+ if(hold)holdMotion(hold);
+ const amplitude=axis==="hit" ? power*1.2 : power;
+ if(!cameraKick || cameraKick.power*(1-cameraKick.age/cameraKick.life)<=amplitude){
+   cameraKick={power:amplitude,dir:dir||1,axis,age:0,life:Math.min(.24,.09+power*.018)};
+ }
+}
+function takeoffFeedback(surface){
+ const loadFraction=Math.max(0,Math.min(1,(loadout.weight-4)/8));
+ const airborne=surface==="air";
+ // A full load kicks up a plume twice as wide as a light load.
+ const groundSize=.34983*(1+loadFraction);
+ const surfaceScale=airborne ? .60 : surface==="armor" ? .82 : 1;
+ const size=groundSize*surfaceScale;
+ const cloud=fx("takeoffCloud",player.x,player.y,surface,"",size);
+ cloud.dir=player.dir;cloud.life=airborne ? .32 : .43;
+}
+function groundDustRadius(dropHeight,weight){
+ // Equivalent drop in metres for an unequipped (4-weight) Glala.
+ const weightedDrop=dropHeight*weight/4;
+ if(weightedDrop>=3.7)return 1.055;
+ if(weightedDrop>=2.4)return .79;
+ return .5275;
+}
+function landingFeedback(speed,y,surface,heavy=false){
+ const fall=Math.min(1,Math.max(0,(speed-3)/11));
+ const mass=Math.min(1,Math.max(0,(loadout.weight-4)/8));
+ let size=.79+.39*fall+.34*mass;
+ if(surface==="ground")size=groundDustRadius(Math.max(0,player.fallPeakY-y),loadout.weight);
+ if(surface==="enemy")size*=.82;
+ if(surface==="armor")size*=.70;
+ if(surface==="core")size+=.24;
+ // A stomp can pass through a defeated target onto the ground a few ticks later.
+ // Soften the camera kick on that second contact.
+ const settling=surface==="ground" && player.motionTime-player.strikeAt<.12;
+ const cloud=fx("landingCloud",player.x,y,surface,"",size);
+ cloud.dir=player.dir;
+ cloud.life=surface==="ground" ? .36+.16*size : .29+.10*size;
+ if(surface==="ground")impulse((2+3.8*fall+2*mass)*(settling ? .46 : 1),player.dir,0,"drop");
+ else{
+   // Hold the contact pose for two or three 60 Hz frames, even with shake disabled.
+   player.strikeAt=player.motionTime;
+   holdMotion((heavy?3:2)/60);
  }
 }
 function burst(style,x,y,dir=1,scale=1){
@@ -209,7 +254,10 @@ function hurt(source,attack,dir=player.dir*-1,contactY){
  const bodyHeight=landscape() ? .55 : .85;
  const y=Number.isFinite(contactY)?Math.max(player.y,Math.min(player.y+bodyHeight,contactY)):player.y+bodyHeight*.53;
  if(titan?.absorb()){
-   player.grace=.35;burst("block",player.x,y,dir);impulse(1.8,dir,.025);
+   const actorScale=landscape() ? .55 : 1;
+   player.grace=.35;
+   fx("clip",player.x,player.y+15*actorScale/SCALE,"shieldBreak","",59*actorScale/SCALE);
+   burst("block",player.x,y,dir,.64);impulse(1.8,dir,.025);
    DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");return
  }
  const dmg=(options.damageScale??1)*(1-(loadout.defense||0));player.hp=Math.max(0,player.hp-dmg);player.grace=1.25;syncHud();fx("num",player.x,player.y+1.05,"-"+Number(dmg.toFixed(2)),"#ff8c83");
@@ -283,7 +331,7 @@ function contact(target,speed,point) {
  if(target){
    if(target.guard?.rig){
      if(point?.part!==1||!GuardianCombat.exposed(target)){
-       burst("armor",player.x,point.y,player.dir,.76);impulse(1.5,player.dir);
+       burst("armor",player.x,point.y,player.dir,.76);landingFeedback(speed,point.y,"armor");
        DropSound.contact?.("block");return
      }
      openedCore=true;target.guard.rig.used=true;target.guard.rig.impact=1;
@@ -320,8 +368,9 @@ function contact(target,speed,point) {
  }
  if(target||hits){
    const heavy=!!hits||loadout.weight>=10||openedCore;
-   impulse(openedCore?5.3:heavy?3.9:2.7,player.dir,openedCore ? .060 : heavy ? .043 : .028);
-   player.strikeAt=player.motionTime;DropSound.impact?.(heavy);
+   if(target)landingFeedback(speed,point.y,openedCore?"core":"enemy",heavy);
+   else{impulse(6.8,player.dir,0,"drop");player.strikeAt=player.motionTime}
+   DropSound.impact?.(heavy);
  }
  const reportedDamage=target?.guard?.frame?previousTargetHP-target.hp:damage;
  if(target||wave)report("下落 "+speed.toFixed(2)+" 米/秒 · 踩踏 "+(target?reportedDamage:0)+(wave?" · 震波 "+Math.round(damage*skill.power):""));
@@ -471,24 +520,27 @@ function tick(dt){
    if(support){mooring.x=Math.min(support.right-.36,Math.max(support.left+.36,p.x));mooring.y=floorHeight}
    else if(!p.perch){p.grounded=false;p.windup=0;p.vy=0}
  }
- if(buffer>0&&!p.grounded && p.airJumps>0){buffer=0;if(spend(b.reboundCost)){p.airJumps--;p.vy=b.launch*.9;p.airAge=0;fx("impact",p.x,p.y,"","#b4dac6",.7)}}
+ if(buffer>0&&!p.grounded && p.airJumps>0){buffer=0;if(spend(b.reboundCost)){p.airJumps--;p.vy=b.launch*.9;p.airAge=0;takeoffFeedback("air")}}
  if(buffer>0&&p.grounded&&p.windup===0){
    buffer=0;
    if(spend(b.jumpCost)){p.windup=b.windupTicks;fallDrops=[];jumpStartKills=kills}
    else report("体力不足 · 稍候再跳。");
  }
  if(p.windup>0 && --p.windup===0){
+   takeoffFeedback(p.perch?"armor":"surface");
    p.perch=null;p.vy=b.launch;p.grounded=false;p.airAge=0;titan?.jump(p,{fx});
-   fx("stepDust",p.x,p.y,"","#a6b7ac",.64).life=.19;
  }
  if(!p.grounded){
   const oldY=p.y;
+  // A renewed ascent (air jump or rebound) starts a fresh descent measurement.
+  p.fallPeakY=p.vy>=0 ? oldY : Math.max(p.fallPeakY,oldY);
   JumpPhysics.advance(p,b);
   const point=p.vy<0?nearestHead(p.x,oldY,p.y):null,target=point?.enemy;
   const landing=platforms.find(platform=>p.vy<=0 && oldY>=platform.y && p.y<=platform.y && p.x>=platform.left && p.x<=platform.right);
   if(target&&(!landing||point.y>=landing.y)){
    if(target.headHeight&&!target.guard)struckThisDescent.add(target);
    contact(target,-p.vy,point);p.y=point.y;
+   p.fallPeakY=point.y;
    const freshPart=target.guard && (p.chainBoss!==target||!(p.chainMask&(1<<point.part)));
    if(b.rebound&&-p.vy>=b.rebound.threshold&&(p.bonus||freshPart)&&(keys.has("jump")||buffer>0)&&spend(b.reboundCost)){
      if(target.guard){if(p.chainBoss!==target)p.chainMask=0;p.chainBoss=target;p.chainMask|=1<<point.part}
@@ -501,10 +553,7 @@ function tick(dt){
    else{p.y=point.y-.001}
   }
   if((landing&&(!target||landing.y>point.y)) || (p.y<=0&&dryDeck(p.x))){
-    if(-p.vy>4){
-      fx("stepDust",p.x,landing?.y||0,"","#e9c996",1).life=.24;
-      if(-p.vy>8 && !hitPause)impulse(b.kind==="earth"?2.2:.8,p.dir);
-    }
+    if(-p.vy>2.4)landingFeedback(-p.vy,landing?.y||0,"ground");
     floorHeight=landing?.y||0;if(!floorHeight || b.kind==="earth")contact(null,-p.vy);p.landAge=0;p.airJumps=b.extraJumps||0;
     p.y=floorHeight;p.vy=0;p.grounded=true;p.bonus=true;p.wave=true;p.perch=null;p.chainBoss=null;p.chainMask=0;reboundFromFront=false;
   }
@@ -542,7 +591,7 @@ function tick(dt){
     if(e.phaseTime<=0){
       if(e.phase==="armored"){e.phase="warning";e.phaseTime=e.warning??.9}
       else if(e.phase==="warning"){
-        fx("wave",e.x,0,"","#e17965",3);
+        fx("wave",e.x,0,"","#e17965",3).hostile=true;
        if(Math.abs(p.x-e.x)<8)impulse(2,Math.sign(p.x-e.x));
        if(Math.abs(p.x-e.x)<3 && p.y<.35)hurt(e.name,"震击",Math.sign(p.x-e.x)||1);if(decoy&&Math.abs(dx)<3 && decoy.y<.35)damageShade(decoy,Math.sign(dx));
         e.phase="weak";e.phaseTime=e.weakTime??1.3;
@@ -636,11 +685,14 @@ function frame(now,token){
    for(const effect of effects)effect.age+=step;
    if(effects.some(effect=>effect.age>=effect.life))effects=effects.filter(effect=>effect.age<effect.life);
    if(cameraKick){cameraKick.age+=step;if(cameraKick.age>=cameraKick.life)cameraKick=null}
-   if(hitPause>0){hitPause=Math.max(0,hitPause-step);continue}
+   if(hitPauseTicks>0){hitPauseTicks--;continue}
    clock+=step;tick(step);
    if(!active || token!==session)return;
+   // Resolve after collision: a landing can kick immediately, while an airborne
+   // hit can still hold the contact pose without offsetting the whole frame.
+   if(!player.grounded || player.perch)cameraKick=null;
  }
- options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax);
+ options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax,titan?.state.shield||0);
  const aim=!player.grounded&&player.y>=JumpPhysics.headHeight?nearestHead(player.x,player.y,0):null;
  if(guardianEnemy&&guardianEnemy.hp<=0)guardianEnemy=enemies.find(e=>e.kind==="bell"&&e.hp>0);
  const boss=gorge()&&guardianEnemy?.homeDeck&&(!guardianEnemy.engaged||Math.abs(guardianEnemy.x-player.x)>16)?null:guardianEnemy;
