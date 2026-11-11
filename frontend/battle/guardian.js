@@ -165,7 +165,7 @@ globalThis.GuardianCombat=(()=>{
     const size=clamp(e.bossScale??1,.85,1.25);
     e.guard={key,kit,size,height:Math.round(kit.height*size),next:e.bossOpener===2?1:0,
       dir:-1,lift:0,age:0,move:null,zones:[],activeFor:0,scratch:{}};
-    e.phase="armored";e.phaseTime=Math.min(e.period??2.2,1.1);
+    e.phase="armored";e.phaseTime=Math.min(e.period??2.2,1.1)/(e.aggression??1);
   }
   function step(e,dt,p,decoy,edge,damage,damageShade,impulse){
     const g=e.guard,target=decoy||p,dx=target.x-e.x;
@@ -227,7 +227,7 @@ globalThis.GuardianCombat=(()=>{
       if(e.phaseTime<=0){e.phase="weak";e.phaseTime=g.rig?Math.max(4.3,e.weakTime||0):g.frame?Math.max(2.8,e.weakTime||0):e.weakTime??1.4;g.lift=0;g.age=0;g.zones=[];if(g.rig)g.rig.used=false;if(g.frame)g.frame.used=false}
     }else if(e.phaseTime<=0){
       e.phase="armored";
-      e.phaseTime=g.rig?Math.max(4,e.period||0):e.hp<=e.max*.5?Math.min(.45,e.period??2.2):e.period??2.2;
+      e.phaseTime=(g.rig?Math.max(4,e.period||0):e.hp<=e.max*.5?Math.min(.45,e.period??2.2):e.period??2.2)/(e.aggression??1);
       g.age=0;
     }
   }

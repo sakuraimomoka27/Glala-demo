@@ -278,7 +278,9 @@
       $("chapter-slot").append(new Option((ci+1)+"-"+(si+1)+" "+stage.name,chapter.id+"/"+stage.id));
     }
   }
-  $("chapter-slot").value=sessionStorage.getItem("ashen:level-workshop:slot")||"belfry/ember_pass";
+  const savedSlot=sessionStorage.getItem("ashen:level-workshop:slot");
+  $("chapter-slot").value=savedSlot;
+  if(!$("chapter-slot").value)$("chapter-slot").value="cinder/ember_pass";
   $("chapter-slot").onchange=()=>sessionStorage.setItem("ashen:level-workshop:slot",$("chapter-slot").value);
   try{
     project=await LevelMap.shipped();map=project;

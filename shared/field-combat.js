@@ -22,7 +22,7 @@ globalThis.FieldCombat=(()=>{
     const dir=actor.aimDir;
     shots.push({x:actor.x+dir*(compact?0:config.portX),y:base+(compact?.42:config.portY),dir,
       speed:config.speed,source:actor.name,attack:config.attack,ink:config.ink,age:0});
-    actor.shotDir=dir;actor.aimDir=0;actor.release=.22;actor.aim=config.cooldown;
+    actor.shotDir=dir;actor.aimDir=0;actor.release=.22;actor.aim=config.draw+(config.cooldown-config.draw)/(actor.aggression??1);
   }
   function mechanisms(specs,offset=0){
     return (specs||[]).map(a=>({id:"watcher",name:"警戒机关",x:a.x+offset,baseY:a.y,aim:1.25}));
@@ -34,7 +34,7 @@ globalThis.FieldCombat=(()=>{
     const hit=config.contact;
     if(e.swing==="tell")return 8+Math.floor(clamp(1-e.swingTime/config.windup)*(hit-9));
     if(e.swing==="cut")return hit+Math.floor(clamp(1-e.swingTime/config.active)*2);
-    if(e.swing==="recover"&&e.swingTime>0)return hit+2+Math.floor(clamp(1-e.swingTime/config.recover)*(19-hit-2));
+    if(e.swing==="recover"&&e.swingTime>0)return hit+2+Math.floor(clamp(1-e.swingTime*(e.aggression??1)/config.recover)*(19-hit-2));
     if(e.id!=="trial_guard"&&Math.abs(e.vx||0)>.02)return 24+Math.floor((e.walkDistance||0)*8/(e.id==="shade"?.88:.65))%8;
     return Math.floor(time*4+(e.poseOffset||0))%8;
   }

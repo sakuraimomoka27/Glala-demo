@@ -1,14 +1,14 @@
 // Defaults consumed by the browser and the local game service.
 globalThis.ASHEN_CONTENT = {
-  version: 1,
+  version: 6,
   worlds:[
-    {id:"shore",name:"巡岸",level:1,riftGate:0,minPower:1,maxPower:180,hpScale:1,damageScale:1},
-    {id:"lantern",name:"循灯",level:2,riftGate:0,minPower:160,maxPower:399,hpScale:1.35,damageScale:1.3},
-    {id:"current",name:"探潮",level:3,riftGate:0,minPower:320,maxPower:659,hpScale:1.8,damageScale:1.7},
-    {id:"crossing",name:"渡隙",level:4,riftGate:0,minPower:540,maxPower:800,hpScale:2.65,damageScale:2.4},
-    {id:"deep",name:"沉渊",level:5,riftGate:10,minPower:580,maxPower:800,hpScale:3.15,damageScale:2.85},
-    {id:"stars",name:"逆星",level:6,riftGate:20,minPower:620,maxPower:800,hpScale:3.65,damageScale:3.3},
-    {id:"night",name:"尽夜",level:7,riftGate:30,minPower:650,maxPower:800,hpScale:4.2,damageScale:3.75}
+    {id:"shore",name:"简单",level:1,riftGate:0,minPower:1,maxPower:180,hpScale:1,damageScale:1},
+    {id:"lantern",name:"普通",level:2,riftGate:0,minPower:160,maxPower:399,hpScale:2,damageScale:1.3},
+    {id:"current",name:"困难",level:3,riftGate:0,minPower:320,maxPower:659,hpScale:3.2,damageScale:1.89},
+    {id:"crossing",name:"极难",level:4,riftGate:0,minPower:540,maxPower:800,hpScale:5.12,damageScale:2.73},
+    {id:"deep",name:"深渊",level:5,riftGate:10,minPower:580,maxPower:800,hpScale:8.19,damageScale:3.96},
+    {id:"stars",name:"噩梦",level:6,riftGate:20,minPower:620,maxPower:800,hpScale:13.11,damageScale:5.75},
+    {id:"night",name:"炼狱",level:7,riftGate:30,minPower:650,maxPower:800,hpScale:20.97,damageScale:8.33}
   ],
   growth: Array.from({length:20},(_,index)=>({id:"growth_"+(index+1),name:"等级 "+(index+1),level:index+1,
     totalXp:12*index*(index+1),hpBonus:index,staminaBonus:index*2})),
@@ -59,24 +59,25 @@ globalThis.ASHEN_CONTENT = {
     {id:"atlas",name:"亚特拉斯",boss:"forge_keeper",series:"钢岩",boost:.60,description:"地之机神维系苍穹、足踏大地，祂的臂膀庇护万物，令生灵不受侵害。"}
   ],
   chapters: [
-    {id:"belfry",name:"克罗索斯旧钟楼",theme:"belfry",rooms:"courtyard,ember_pass,belltower",color:"#eac181",description:"克罗索斯的委托簿上夹着一枚失去光泽的塞拉斯。送信的格拉拉没能回来，泥爪印一直延伸到旧钟楼。",ending:"钟壳里滚出一枚铃铛。格拉拉听见三短一长的回声：这是失散同伴才懂的呼唤。"},
+    {id:"belfry",name:"克罗索斯旧钟楼",theme:"belfry",rooms:"courtyard,crypt_bridge,belltower",color:"#eac181",description:"克罗索斯的委托簿上夹着一枚失去光泽的塞拉斯。送信的格拉拉没能回来，泥爪印一直延伸到旧钟楼。",ending:"钟壳里滚出一枚铃铛。格拉拉听见三短一长的回声：这是失散同伴才懂的呼唤。"},
     {id:"thicket",name:"荆棘修道院",theme:"thicket",rooms:"thorn_gate,thorn_cloister,thorn_apse",color:"#8ab68d",description:"探求者在荆棘间系上布条。跟着标记穿过旧修道院，查明谁把几只格拉拉留在地下。",ending:"祭坛底下住着两只幼崽。它们抱着空宝箱，箱底压着一张通往铸炉的矿车票。"},
     {id:"forge",name:"神代铸炉",theme:"forge",rooms:"forge_lift,forge_hall,forge_throne",color:"#e38b61",description:"神代铸炉的机械守卫还在运转。失踪的领路者曾来这里给塞拉斯充能。",ending:"炉心重启。水绿色的光照出领路者留下的足迹，穿过运矿井，朝北方烽台而去。"},
     {id:"frost",name:"冰水平原的烽台",theme:"frost",rooms:"frost_wall,frost_span,frost_keep",color:"#93c6d9",description:"冰水平原尽头，堡垒的烽火已经熄灭。要接回走散的族群，必须先让塔顶的归途灯亮起来。",ending:"烽火重燃。风雪里终于传来一声「格！」，最后的回音却来自更深处的王庭。"},
-    {id:"eclipse",name:"蚀月王庭",theme:"eclipse",rooms:"moon_gate,moon_gallery,moon_court",color:"#c197ca",description:"月影压住了遗迹的出口。领路者用最后一块塞拉斯守着归路，等待同伴接替。",ending:"格拉拉们把塞拉斯一块块传到王座前。归途灯尽数点亮。克罗索斯的委托簿上，多了好几枚小爪印。"}
+    {id:"eclipse",name:"蚀月王庭",theme:"eclipse",rooms:"moon_gate,moon_gallery,moon_court",color:"#c197ca",description:"月影压住了遗迹的出口。领路者用最后一块塞拉斯守着归路，等待同伴接替。",ending:"格拉拉们把塞拉斯一块块传到王座前。归途灯尽数点亮。一枚滚烫的炉印，指向归途尽头的灰烬栈道。"},
+    {id:"cinder",name:"归火之路",theme:"forge",rooms:"cinder_watch,cinder_yard,ember_pass",color:"#e79560",description:"沿运矿道送回炉印。山门尽头，红莲机神还守着最后一簇火。",ending:"炉印归位，灰烬里亮起归途灯。按 I 装上红莲主位，连续踩击可叠加灼烧。回到克罗索斯后，可从秘境之门开始下一次远征。"}
   ],
   adventures: [
     {id:"first_bell",name:"第一章 · 失声的钟楼",kind:"story",description:"探求者留下了半张委托书：去旧钟楼找一找，送信的格拉拉还没回来。",rooms:"courtyard,belltower",ending:"钟楼的机关重新转动。失散的同伴从拱门另一侧回了一声「格！」。",shards:6,keys:0},
-    {id:"ash_rift",name:"小秘境 · 余烬回廊",kind:"lesser",description:"穿过两间战斗房，讨伐尽头的虚数体。通过房间后保留战利品，通关取得钥石。",rooms:"courtyard,ember_pass,belltower",variants:"ember_pass,crypt_bridge",ending:"裂隙平息。钟心凝成了一枚可以开启大秘境的钥石。",shards:8,keys:1},
-    {id:"deep_bell",name:"大秘境 · 无尽钟渊",kind:"greater",description:"消耗钥石限时挑战。越深处的怪物越坚韧，通关掉落带有层印的装备。",rooms:"courtyard,ember_pass,belltower",ending:"钟声抵达更深处，你在深渊石碑上留下了一道刻痕。",shards:6,keys:0,keyCost:1,timeLimit:100,maxTier:30,hpGrowth:.22,speedGrowth:.03,tierReward:2,markPower:1}
+    {id:"ash_rift",name:"小秘境 · 余烬回廊",kind:"lesser",lesserHpFactor:2.1,lootBaseFactor:1.15,description:"穿过两间战斗房，讨伐尽头的虚数体。通过房间后保留战利品，通关取得钥石。",rooms:"courtyard,ember_pass,belltower",variants:"ember_pass,crypt_bridge",ending:"裂隙平息。钟心凝成了一枚可以开启大秘境的钥石。",shards:8,keys:1},
+    {id:"deep_bell",name:"大秘境 · 无尽钟渊",kind:"greater",lootBaseFactor:1.15,lootGrowth:.19,damageGrowth:.16,description:"消耗钥石限时挑战。越深处的怪物越坚韧，通关掉落带有层印的装备。",rooms:"courtyard,ember_pass,belltower",ending:"钟声抵达更深处，你在深渊石碑上留下了一道刻痕。",shards:6,keys:0,keyCost:1,timeLimit:100,maxTier:30,hpGrowth:.22,speedGrowth:.03,tierReward:2,markPower:1}
   ],
   monsters: [
-    {id:"bell_keeper",name:"裂钟守门人",kind:"bell",hp:110,speed:.18,color:"#dba960",period:2.0,warning:.9,weakTime:1.3},
-    { id: "trial_guard", name: "戈仑", kind: "guard", hp: 24, speed: 0, color: "#a7967a" },
-    { id: "sentry", name: "帝国近战兵", kind: "guard", hp: 38, speed: 0.32, color: "#8b9aad" },
-    { id: "archer", name: "无名的射手", kind: "bow", hp: 30, speed: 0, color: "#bc91a3" },
-    { id: "forgeguard", name: "帝国精英", kind: "guard", hp: 48, speed: 0.42, color: "#d0966d" },
-    { id: "shade", name: "仿生猎犬", kind: "guard", hp: 24, speed: 0.58, color: "#9587b3" }
+    {id:"bell_keeper",name:"裂钟守门人",kind:"bell",hp:132,speed:.18,color:"#dba960",period:2.0,warning:.9,weakTime:1.3},
+    { id: "trial_guard", name: "戈仑", kind: "guard", hp: 29, speed: 0, color: "#a7967a" },
+    { id: "sentry", name: "帝国近战兵", kind: "guard", hp: 46, speed: 0.32, color: "#8b9aad" },
+    { id: "archer", name: "无名的射手", kind: "bow", hp: 36, speed: 0, color: "#bc91a3" },
+    { id: "forgeguard", name: "帝国精英", kind: "guard", hp: 58, speed: 0.42, color: "#d0966d" },
+    { id: "shade", name: "仿生猎犬", kind: "guard", hp: 29, speed: 0.58, color: "#9587b3" }
   ],
   affixes: [
     { id: "fleet", name: "疾行", stat: "move", min: 0.06, max: 0.28, weight: 32 },
@@ -107,7 +108,7 @@ for(const [id,name,boss,series,ability,power,period,duration,radius,abilityText,
   let row=ASHEN_CONTENT.summons.find(s=>s.id===id);if(!row){row={id,name,description,boost:.6};ASHEN_CONTENT.summons.push(row)}
   Object.assign(row,{boss,series,ability,power,period,duration,radius,abilityText});if(ability==="burn")row.burnChances="100,80,55,35,15";
 }
-ASHEN_CONTENT.monsters.push({id:"fire_keeper",name:"普罗米修斯",kind:"bell",hp:54,speed:.12,color:"#c45443",period:3.1,warning:1.15,weakTime:1.6});
+ASHEN_CONTENT.monsters.push({id:"fire_keeper",name:"普罗米修斯",kind:"bell",hp:65,speed:.12,color:"#c45443",period:3.1,warning:1.15,weakTime:1.6});
 Object.assign(ASHEN_CONTENT.levels.find(l=>l.id==="ember_pass"),{formation:"trial_guard,archer,fire_keeper",rear:"fire_keeper",positions:"5.8,9,13.4",count:3,description:"灰烬里有一串小爪印。栈道尽头，红莲机神正守着一簇火种。"});
 // Stable loot IDs are independent of card titles, randomized stats and account history.
 // The row order is also the address in the two artwork atlases.
@@ -184,7 +185,7 @@ for (const [theme, names, front, guardian, color] of [
   const chapter=ASHEN_CONTENT.chapters.find(row=>row.theme===theme);
   const index=ASHEN_CONTENT.chapters.indexOf(chapter);
   const boss=theme+"_keeper";
-  ASHEN_CONTENT.monsters.push({id:boss,name:guardian,kind:"bell",hp:88+index*9,speed:.18,color,period:2.2,warning:1,weakTime:1.4});
+  ASHEN_CONTENT.monsters.push({id:boss,name:guardian,kind:"bell",hp:Math.round((88+index*9)*1.2),speed:.18,color,period:2.2,warning:1,weakTime:1.4});
   chapter.rooms.split(",").forEach((id,i)=>{
     const last=i===2;
     ASHEN_CONTENT.levels.push({id,name:names[i],description:last?"拱门另一侧，传来机关运转的声音。":"前面的石阶上留着一串小爪印。",
@@ -192,6 +193,41 @@ for (const [theme, names, front, guardian, color] of [
       positions:last?"5.8,9.3,13":i===0?"5.8,8.6,12":"5.8,8.6,10.2,13.2",dropChance:.68,bonusChance:.18,focusSlot:["boots","armor","ring"][i]});
   });
 }
+ASHEN_CONTENT.levels.push(
+  {id:"cinder_watch",name:"余烬哨站",description:"猎犬在断墙前巡逻，弓手守在后方。",count:4,front:"shade",rear:"archer",formation:"shade,shade,archer,archer",positions:"5.8,7,10.4,13.6",dropChance:.70,bonusChance:.20},
+  {id:"cinder_yard",name:"运矿前庭",description:"铁卫守住通往山门的高台。",count:5,front:"forgeguard",rear:"archer",formation:"forgeguard,archer,shade,archer,forgeguard",positions:"5.8,8.4,9.4,12,14",dropChance:.70,bonusChance:.20}
+);
+// Encounter base HP bonus, contact damage multiplier, dropped echo base-stat multiplier.
+const campaignBalance=[
+  [0,1,1],[0,1,5],[85,4,13],[173,9,31],[320,22,75],[545,54,175]
+];
+const campaignLessons=[
+  ["dione","A、D 移动，空格起跳。从上方踩中守卫，清场后穿过水门。","等弓手拉弓再起跳，越过箭线，优先踩后排射手。","借左侧残台登上机身，等潮汐肩核亮起再落击。过门解锁狄俄涅。"],
+  ["mnemosyne","按 I 打开编成，可将狄俄涅设为主位。面向敌人，让水箭沿同一高度命中。","把回息或水箭词缀装入武器盘，留出体力连续越过前排。","从侧台登上机身，避开风刃，在破绽期落击风翼根部。过门解锁风机甲。"],
+  ["atlas","可换上风主位。空中再按空格二段跳，调整落点踩向铁卫。","风主位踩头时按住跳跃可借力；先踩前排，再转向后排。","从左侧断桥登上双轨炮，随炮臂升高，肩核开启时跃落。过门解锁亚特拉斯。"],
+  ["cronus","试用钢岩主位：在卫兵旁从高处落地，震波命中可获得一层盾。","比较轻重回响的跳高和震波范围，选能越过守卫的配装。","登上侧甲，等剑势收尽，再从上方踩中发亮的执剑腕甲。过门解锁光机甲。"],
+  ["hecate","试用辉煌主位：靠近敌群，让同一次剑光扫中多名守卫。","借平台调整距离，等剑光出手后拉开，再找下一次切入点。","利用残台躲开攻击，等破绽期跃击蚀相肩核。过门解锁赫卡忒。"],
+  ["prometheus","试用宵暗主位：起跳留下影仆，趁猎犬转向影仆时接近弓手。","选熟悉的主位。先处理后排，落地回体，为下一次攀登留足体力。","穿过断桥登上炉甲；等炉腕亮起，从上方落击。过门解锁普罗米修斯。"]
+];
+for(const [ci,chapter] of ASHEN_CONTENT.chapters.entries()){
+  const [unlockSummon,...lessons]=campaignLessons[ci];
+  chapter.unlockSummon=unlockSummon;
+  [chapter.monsterHpBonus,chapter.monsterDamageFactor,chapter.echoBaseFactor]=campaignBalance[ci];
+  chapter.rooms.split(",").forEach((id,si)=>{
+    const stage=ASHEN_CONTENT.levels.find(row=>row.id===id);
+    stage.monsterLevel=ci*3+si+1;
+    stage.lesson=lessons[si];
+  });
+}
+ASHEN_CONTENT.levels.find(row=>row.id==="ember_pass").storyBossHp=158;
+ASHEN_CONTENT.levels.find(row=>row.id==="thorn_gate").storyFrontHp=104;
+Object.assign(ASHEN_CONTENT.levels.find(row=>row.id==="thorn_cloister"),{
+  storyFrontHp:99,storyRearHp:95,positions:"5.8,7.5,10.2,14"
+});
+Object.assign(ASHEN_CONTENT.levels.find(row=>row.id==="thorn_apse"),{
+  storyFrontHp:90,positions:"6.4,14.5,8.8"
+});
+
 for(const monster of ASHEN_CONTENT.monsters){
   const boss=monster.kind==="bell";
   Object.assign(monster,{xp:boss?24:8,goldMin:boss?8:1,goldMax:boss?12:3});

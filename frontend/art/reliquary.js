@@ -4,6 +4,7 @@ globalThis.EchoIcon=(()=>{
   const book=FANTASY_CARDS, exchange=new Set(book.exchange.map(x=>x.id));
   function idFor(item){
     if(!item)return null;
+    if(exchange.has(item.goldStarId)&&item.goldStarId===item.coreId)return item.coreId;
     if(item.tier==="unique"&&item.uniqueId==="tidal_bell"&&exchange.has(132206))return 132206;
     const pool=book.fights[item.fantasyBoss]?.[item.fantasyMode];
     return pool?.ids.includes(item.coreId)&&book.cards[item.coreId]?.tier===item.tier?item.coreId:null;
@@ -58,6 +59,7 @@ globalThis.EchoIcon=(()=>{
   }
   function origin(item){
     const id=idFor(item);if(!id)return "";
+    if(item.goldStarId===id)return "金星套装 · 大秘境第 20 层起限时通关掉落";
     if(exchange.has(id))return "卡面："+book.cards[id].name+" · 金星兑换（240 耀金星徽）";
     const boss=globalThis.ASHEN_CONTENT.summons.find(s=>s.id===item.fantasyBoss);
     return (boss?.name||"虚数体")+"讨伐战 · "+(item.fantasyMode==="origin"?"真源":"困难");

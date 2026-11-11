@@ -1,6 +1,6 @@
 globalThis.WorldView=(()=>{
   const {el,button}=UI;
-  const numerals=["一","二","三","四","五"];
+  const numerals=["一","二","三","四","五","六"];
   const chapterName=i=>"第"+(numerals[i]||String(i+1))+"章";
   function small(text){return el("small",text,"eyebrow")}
   function portrait(role){const c=el("canvas",undefined,"glala-portrait");GlalaArt.draw(c,role,"portrait");return c}
@@ -82,8 +82,8 @@ globalThis.WorldView=(()=>{
     head.append(titles);
     if(!readOnly&&actions.changeWorld){
       const world=WorldDifficulty.current(catalog,hero);
-      const picker=el("div",undefined,"world-picker"),label=el("label","遗迹潮位"),select=el("select",undefined,"world-select");
-      select.setAttribute("aria-label","遗迹潮位");
+      const picker=el("div",undefined,"world-picker"),label=el("label","关卡难度"),select=el("select",undefined,"world-select");
+      select.setAttribute("aria-label","关卡难度");
       for(const row of catalog.worlds){
         const reason=WorldDifficulty.lockedReason(catalog,hero,row);
         const option=el("option",row.level+" · "+row.name+(reason?"　｜　"+reason:""));
@@ -91,7 +91,7 @@ globalThis.WorldView=(()=>{
       }
       select.value=world.level;select.disabled=!!hero.run;
       const rates=world.level>=4?"　·　源铸 "+(100*ItemStrength.chanceAtLeast(world,660)).toFixed(1)+"%":"";
-      const status=el("span",hero.run?"秘境结束后可调整":"强度 "+world.minPower+"～"+world.maxPower+rates+"　·　敌人生命 ×"+world.hpScale+"　攻击 ×"+world.damageScale);
+      const status=el("span",hero.run?"秘境结束后可调整":"强度 "+world.minPower+"～"+world.maxPower+rates+"　·　怪物生命 ×"+world.hpScale+"　·　伤害 ×"+world.damageScale);
       status.setAttribute("role","status");
       select.onchange=()=>{
         try{actions.changeWorld(Number(select.value))}catch(error){select.value=world.level;status.textContent=error.message}
@@ -128,6 +128,7 @@ globalThis.WorldView=(()=>{
         actions.select(i);
         root.querySelector('[data-atlas-chapter="'+i+'"]')?.focus({preventScroll:true});
       },"atlas-hotspot atlas-landmark");
+      key.style.width=(100/regions.length)+"%";
       key.dataset.atlasChapter=i;
       key.dataset.current=String(i===ci);
       key.dataset.locked=String(region.locked);
@@ -152,9 +153,9 @@ globalThis.WorldView=(()=>{
       selected=i;
       const stage=stages[i],status=stage.locked?"未开放":stage.cleared?"已通关":"当前进度";
       detail.dataset.status=stage.locked?"locked":stage.cleared?"cleared":"frontier";
-      detailState.textContent=number(i)+"　／　"+status;
+      detailState.textContent=number(i)+"　／　"+status+"　·　怪物 Lv."+(stage.level.monsterLevel??1);
       detailName.textContent=stage.level.name;
-      detailInfo.textContent=encounter(stage);
+      detailInfo.textContent=encounter(stage)+(stage.level.lesson?"。"+stage.level.lesson:"");
       detailHint.textContent=stage.locked?condition(i):readOnly?"正在查阅地图。返回远征地图后可从此进入。":stage.cleared?"点选此节点，重游已通关的遗迹。":"点选此节点，从这里继续远征。";
       Array.from(roomKeys.children).forEach((key,index)=>{key.dataset.inspect=String(index===selected);});
     }

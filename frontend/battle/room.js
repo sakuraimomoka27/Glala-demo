@@ -71,9 +71,9 @@ function reset(override) {
   if(options.practice && byId("trial-instructions"))byId("trial-instructions").textContent=(options.bossDrill?level.description:loadout.titan?.abilityText||level.description)+(loadout.kind==="earth"?" 演练装载 8 点额外负重。":"");
   const windControl=byId("wind-control");if(windControl){
     windControl.hidden=!loadout.extraJumps;
-    windControl.textContent="；空中可再跳 "+loadout.extraJumps+" 次"+(loadout.rebound?"，按住命中可借力":"");
+    windControl.textContent="；空中可再跳 "+loadout.extraJumps+" 次"+(loadout.stars?.wind>=6?"，按住踩中可免费反弹并补回空跳":loadout.rebound?"，按住命中可借力":"");
   }
-   titan=(loadout.kind||loadout.bladeDamage)&&globalThis.TitanCombat ? TitanCombat.create(loadout,options.loopBiome?Infinity:options.door?.width):null;
+   titan=(loadout.kind||loadout.bladeDamage||loadout.shotPeriod||loadout.shadowLife||loadout.stars?.ember>=6||loadout.stars?.light>=6||loadout.stars?.stone>=6)&&globalThis.TitanCombat ? TitanCombat.create(loadout,options.loopBiome?Infinity:options.door?.width):null;
   player={x:3.3,y:0,vy:0,dir:1,hp:Math.min(loadout.maxHp??character.hp,options.hp??loadout.maxHp??character.hp),landAge:1,airAge:0,motionTime:0,airJumps:loadout.extraJumps||0,stamina:Math.min(loadout.staminaMax,options.stamina??loadout.staminaMax),grace:0,windup:0,grounded:true,bonus:true,wave:true};
   const positions=level.positions ? level.positions.split(/[,，]/).map(Number) : undefined;
   if(inStreet)player.x=entrance().streetStart+1.5;
@@ -88,14 +88,20 @@ function reset(override) {
     // Shared rift formations still use compact-room coordinates. Translate the
     // three authored spawn marks only for this particular campaign landscape.
     if(!authored&&gorge()&&level.id==="ember_pass"&&x===[5.8,9,13.4][i])x=gorge().spawnX[i];
-    const hp=Math.max(1,Math.round(row.hp*(options.hpScale??1)));
     const machine=catalog.summons?.find(s=>s.boss===row.id);
+    let baseHp=row.kind==="bell"?Math.max(row.hp,options.bossHpFloor??0):(options.riftBaseHp?.[row.id]??row.hp);
+    if(machine && machine.id===options.unlockSummon)baseHp=options.storyBossHp??baseHp;
+    else if(!machine && row.id===level.front)baseHp=options.storyFrontHp??baseHp;
+    else if(!machine && row.kind!=="bell" && row.id===level.rear)baseHp=options.storyRearHp??baseHp;
+    baseHp+=(options.monsterHpBonus??0)*(row.kind==="bell"?2:1);
+    const hp=Math.max(1,Math.round(baseHp*(options.hpScale??1)));
+    const aggression=options.aggression??1;
     const humanScale=gorge()?(row.kind==="guard"||row.kind==="bow"):entrance()&&["sentry","archer"].includes(row.id);
     const headHeight=humanScale?FieldCombat.profile(row.id,row.kind).head:undefined;
     const baseY=authored?.actors[i]?.y||0;
     const supports=baseY?authored.platforms:landscape()?.decks;
     const homeDeck=supports?.find(d=>Math.abs((d.y||0)-baseY)<.015&&x>=d.left&&x<=d.right);
-    return {...row,poseOffset:(i*3)%8,headHeight,homeDeck,baseY,machine,name:machine?.name||row.name,hp,speed:row.speed*(options.speedScale??1),x,depth:total>18?(i%3)*2-2:0,max:hp,aim:2.8+(i%13)*.21};
+    return {...row,monsterLevel:options.monsterLevel??1,aggression,poseOffset:(i*3)%8,headHeight,homeDeck,baseY,machine,name:machine?.name||row.name,hp,speed:row.speed*(options.speedScale??1),x,depth:total>18?(i%3)*2-2:0,max:hp,aim:(2.8+(i%13)*.21)/aggression};
   });
   sentinels=FieldCombat.mechanisms(authored?.hazards);
   globalThis.FieldArt?.preload(enemies,sentinels);
@@ -163,8 +169,10 @@ function creditKills(){
   catch(error){report(error.message);setPaused(true);return false}
   roomGrowth.xp+=gain.xp;roomGrowth.killGold+=gain.killGold;roomGrowth.levelEnd=gain.levelEnd;
   roomGrowth.hpGain+=gain.hpGain;roomGrowth.staminaGain+=gain.staminaGain;
-  loadout.maxHp+=gain.hpGain;loadout.staminaMax+=gain.staminaGain;
-  player.hp=Math.min(loadout.maxHp,player.hp+gain.hpGain);
+  const oldMaxHp=loadout.maxHp;
+  loadout.baseMaxHp=(loadout.baseMaxHp??oldMaxHp)+gain.hpGain;
+  loadout.maxHp=loadout.stars?.stone>=2?Math.floor(loadout.baseMaxHp*115/100):loadout.baseMaxHp;loadout.staminaMax+=gain.staminaGain;
+  player.hp=Math.min(loadout.maxHp,player.hp+(loadout.maxHp-oldMaxHp));
   player.stamina=Math.min(loadout.staminaMax,player.stamina+gain.staminaGain);
   const x=pendingIncome.x/pendingIncome.count;
   if(gain.killGold)fx("coin",x,.4,"+"+gain.killGold,"#f7ca68",Math.min(3,pendingIncome.count));
@@ -258,7 +266,16 @@ function hurt(source,attack,dir=player.dir*-1,contactY){
    player.grace=.35;
    fx("clip",player.x,player.y+15*actorScale/SCALE,"shieldBreak","",59*actorScale/SCALE);
    burst("block",player.x,y,dir,.64);impulse(1.8,dir,.025);
-   DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");return
+   DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");
+   if(loadout.stars?.stone>=6){
+     const damage=Math.round((JumpPhysics.preview(loadout).damage??JumpPhysics.damage(8,loadout.attack))*1.8);
+     const drops=[],previous=kills;
+     fx("wave",player.x,player.y,"","#f4ce86",3.5);
+     for(const enemy of enemies)if(enemy.hp>0 && Math.hypot(enemy.x-player.x,(enemy.baseY||0)-player.y)<=3.5)
+       hit(enemy,damage,drops,true,false,"wave");
+     announceDrops(drops);syncHud();if(kills!==previous)checkClear();
+   }
+   return
  }
  const dmg=(options.damageScale??1)*(1-(loadout.defense||0));player.hp=Math.max(0,player.hp-dmg);player.grace=1.25;syncHud();fx("num",player.x,player.y+1.05,"-"+Number(dmg.toFixed(2)),"#ff8c83");
  player.hurtAt=clock;player.hurtDir=dir;burst("wound",player.x,y,dir);
@@ -270,6 +287,12 @@ function hit(enemy,value,drops,showNumber=true,breached=false,contactStyle="stom
  if(enemy.guard?.rig&&!breached){
    if(point)burst("armor",point.x,point.y,point.dir||player.dir,.65);
    return;
+ }
+ if(loadout.stars){
+   const bonus=GoldStars.hitBonus(loadout,enemy,contactStyle,total-kills);
+   if(bonus)value=Math.max(1,Math.round(value*(1+bonus/100)));
+   if(loadout.stars.tide>=4 && (contactStyle==="stomp"||contactStyle==="core"))
+     player.stamina=Math.min(loadout.staminaMax,player.stamina+4);
  }
  if(enemy.kind==="bell")value=Math.max(1,Math.round(value*(enemy.phase==="weak"?1.7:.65)));
  if(enemy.guard?.frame&&!breached)value=Math.min(value,Math.max(1,Math.ceil(enemy.max*.08)));
@@ -284,11 +307,12 @@ function hit(enemy,value,drops,showNumber=true,breached=false,contactStyle="stom
  }
  if(enemy.hp)return;
  kills++;
+ if(loadout.stars?.shade>=4)player.hp=Math.min(loadout.maxHp,player.hp+.03*loadout.maxHp);
  if(awardKills){
    const pickup=Growth.roll(enemy);
    pendingIncome.xp+=pickup.xp;pendingIncome.gold+=pickup.gold;pendingIncome.x+=enemy.x;pendingIncome.count++;
  }
- if(enemy.machine && options.onResolve && !options.practice && !Echoes.owns(Profile.hero,enemy.machine.id) && !summonDrops.includes(enemy.machine.id) && Math.random()<(enemy.machine.dropChance??1)){
+ if(enemy.machine && options.onResolve && !options.practice && !Echoes.owns(Profile.hero,enemy.machine.id) && !summonDrops.includes(enemy.machine.id) && (options.unlockSummon===undefined?Math.random()<(enemy.machine.dropChance??1):enemy.machine.id===options.unlockSummon)){
    summonDrops.push(enemy.machine.id);fx("num",enemy.x,1.3,enemy.machine.name,"#f4cb85");const banner=byId("machine-drop");if(banner){banner.hidden=false;banner.textContent="虚数体 · "+enemy.machine.name+"　｜　通过本关后获得"}
  }
  for (const item of roller(level,kills===total,enemy.id)) {
@@ -323,6 +347,10 @@ function announceDrops(drops) {
  ticker.textContent="本次获得 "+fallDrops.length+" 件　最高："+item.tierName+" · "+item.name+"　"+ItemStrength.describe(ItemStrength.of(item))+(options.practice?" 练习掉落":options.door?" 过门后入包":options.onResolve?" 清房后入库":kept?" 已入库":" 已分解");
  ticker.style.color=item.color;
 }
+function coreImpact(target,damage,divisor){
+ const impactLimit=options.monsterLevel>=7?Math.round(damage*1.5):Infinity;
+ return Math.max(damage,Math.min(impactLimit,Math.ceil(target.max/divisor)));
+}
 function contact(target,speed,point) {
  const previousKills=kills,previousTargetHP=target?.hp;
  let openedCore=false;
@@ -335,17 +363,20 @@ function contact(target,speed,point) {
        DropSound.contact?.("block");return
      }
      openedCore=true;target.guard.rig.used=true;target.guard.rig.impact=1;
-     hit(target,Math.max(damage,Math.ceil(target.max/4)),drops,false,true,"core",{x:player.x,y:point.y});
+     hit(target,coreImpact(target,damage,4),drops,false,true,"core",{x:player.x,y:point.y});
      fx("num",point.x,point.y+.35,"肩核破击","#ffe6a2");
    }else if(target.guard?.frame&&target.phase==="weak"&&!target.guard.frame.used&&point?.part===target.guard.frame.cfg.core){
      const frame=target.guard.frame;openedCore=true;frame.used=true;frame.stagger=1;
-     hit(target,Math.max(damage,Math.ceil(target.max/5)),drops,true,true,"core",{x:player.x,y:point.y});
+     hit(target,coreImpact(target,damage,5),drops,true,true,"core",{x:player.x,y:point.y});
      fx("num",point.x,point.y+.35,frame.cfg.site+"破击",frame.cfg.colors[2]);
    }else{
    if(target.kind==="guard"){target.swing="recover";target.swingTime=.38}
    titan?.ignite(target,{fx});hit(target,damage,drops,true,false,"stomp",{x:player.x,y:point.y})
    }
  }
+ const landed=target && target.hp<previousTargetHP;
+ if(landed && (loadout.stars?.ember>=6||loadout.stars?.light>=6))
+   titan.stomp(target,damage,enemies,{fx,hit:(e,value,style)=>hit(e,value,drops,true,false,style)});
  const fault=loadout.powers?.impact_ring;
  if(target&&fault){
    fx("wave",target.x,target.baseY||0,"","#ef9e64",fault.radius);
@@ -372,9 +403,10 @@ function contact(target,speed,point) {
    else{impulse(6.8,player.dir,0,"drop");player.strikeAt=player.motionTime}
    DropSound.impact?.(heavy);
  }
- const reportedDamage=target?.guard?.frame?previousTargetHP-target.hp:damage;
+ const reportedDamage=target && (target.guard?.frame||Object.keys(loadout.stars||{}).length)?previousTargetHP-target.hp:damage;
  if(target||wave)report("下落 "+speed.toFixed(2)+" 米/秒 · 踩踏 "+(target?reportedDamage:0)+(wave?" · 震波 "+Math.round(damage*skill.power):""));
  checkClear();
+ return landed;
 }
 function checkClear(){
  if(!creditKills())return;
@@ -382,7 +414,7 @@ function checkClear(){
    if(isTrial() && loadout.kind && !["wind","earth"].includes(loadout.kind)){trialComplete=true;updateTrial()}
    if(options.door){
      if(!exitReady){
-       const text=entrance()?(options.loopBiome==="water"?"前方水渠已畅通。":"守卫已清除 · 登上水门，进入克罗索斯街道。"):gorge()?(options.loopBiome?"栈道畅通 · 可继续向前巡游。":elementBoss?.machine?.id==="prometheus"?"炉腕已熄灭 · 穿过右侧山门，前往旧钟楼。":"守卫已清除 · 穿过终点山门。"):"守卫已清除 · 走进右侧发光拱门通关。";
+       const text=entrance()?(options.loopBiome==="water"?"前方水渠已畅通。":"守卫已清除 · 登上水门，进入克罗索斯街道。"):gorge()?(options.loopBiome?"栈道畅通 · 可继续向前巡游。":elementBoss?.machine?.id==="prometheus"?"炉腕已熄灭 · 穿过右侧山门，完成远征。":"守卫已清除 · 穿过终点山门。"):"守卫已清除 · 走进右侧发光拱门通关。";
        report(text);byId("adventure-status").textContent=text;
      }
      exitReady=true;
@@ -444,7 +476,7 @@ function guardTurn(e,dt,p,decoy,dx){
    if(!e.cutHit&&d>=-.14&&d<=reach&&target.y<e.baseY+.50&&target.y+.55>e.baseY){
      e.cutHit=true;if(decoy)damageShade(decoy,e.swingDir);else hurt(e.name,move.attack,e.swingDir);
    }
-   if(e.swingTime<=0){e.swing="recover";e.swingTime=move.recover}
+   if(e.swingTime<=0){e.swing="recover";e.swingTime=move.recover/e.aggression}
  }else{
    if(Math.abs(dx)>.38)e.x+=Math.sign(dx)*e.speed*dt;
    if(e.swingTime<=0&&Math.abs(dx)<reach&&target.y<e.baseY+1&&target.y+.55>e.baseY){
@@ -539,13 +571,18 @@ function tick(dt){
   const landing=platforms.find(platform=>p.vy<=0 && oldY>=platform.y && p.y<=platform.y && p.x>=platform.left && p.x<=platform.right);
   if(target&&(!landing||point.y>=landing.y)){
    if(target.headHeight&&!target.guard)struckThisDescent.add(target);
-   contact(target,-p.vy,point);p.y=point.y;
+   const landed=contact(target,-p.vy,point);p.y=point.y;
    p.fallPeakY=point.y;
    const freshPart=target.guard && (p.chainBoss!==target||!(p.chainMask&(1<<point.part)));
-   if(b.rebound&&-p.vy>=b.rebound.threshold&&(p.bonus||freshPart)&&(keys.has("jump")||buffer>0)&&spend(b.reboundCost)){
+   const freeBounce=landed && b.stars?.wind>=6;
+   if((keys.has("jump")||buffer>0) && (freeBounce || (b.rebound&&-p.vy>=b.rebound.threshold&&(p.bonus||freshPart)&&spend(b.reboundCost)))){
+     if(freeBounce){
+       p.airJumps=Math.min(b.extraJumps,p.airJumps+1);
+       fx("clip",p.x,point.y,"airStep","",1.8);
+     }
      if(target.guard){if(p.chainBoss!==target)p.chainMask=0;p.chainBoss=target;p.chainMask|=1<<point.part}
-     p.vy=b.rebound.power;p.airAge=0;p.bonus=false;buffer=0;fallDrops=[];reboundFromFront=target.id===level.front;
-     fx("num",p.x,point.y+.38,target.guard?"借风":"UP","#a8e1de")
+     p.vy=freeBounce?b.launch:b.rebound.power;p.airAge=0;p.bonus=false;buffer=0;fallDrops=[];reboundFromFront=target.id===level.front;
+     fx("num",p.x,point.y+.38,freeBounce?"踏风":target.guard?"借风":"UP","#a8e1de")
    }else if(target.guard&&target.hp>0){
      p.grounded=true;p.vy=0;p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.bonus=true;p.wave=true;
      p.chainBoss=null;p.chainMask=0;floorHeight=0;p.perch={enemy:target,part:point.part,cx:point.x};
@@ -553,6 +590,7 @@ function tick(dt){
    else{p.y=point.y-.001}
   }
   if((landing&&(!target||landing.y>point.y)) || (p.y<=0&&dryDeck(p.x))){
+    if(b.stars?.stone>=6)titan.shield(p,{fx});
     if(-p.vy>2.4)landingFeedback(-p.vy,landing?.y||0,"ground");
     floorHeight=landing?.y||0;if(!floorHeight || b.kind==="earth")contact(null,-p.vy);p.landAge=0;p.airJumps=b.extraJumps||0;
     p.y=floorHeight;p.vy=0;p.grounded=true;p.bonus=true;p.wave=true;p.perch=null;p.chainBoss=null;p.chainMask=0;reboundFromFront=false;
@@ -570,7 +608,7 @@ function tick(dt){
  if(canal&&!inStreet&&options.loopBiome!=="water"&&exitReady&&Math.abs(p.x-canal.waterGate.x)<.46&&Math.abs(p.y-canal.waterGate.y)<.48){
    inStreet=true;floorHeight=0;buffer=0;p.x=canal.streetStart+1.5;p.y=0;p.vy=0;p.grounded=true;p.windup=0;
    p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.perch=null;effects=[];arrows=[];
-   if(titan){titan.state.bolts.length=0;titan.state.blades.length=0;titan.state.shades.length=0}
+   titan?.clearProjectilesAndSummons();
    byId("adventure-status").textContent=options.loopBiome?"克罗索斯街道 · 沿街漫游":"克罗索斯街道 · 沿拱廊前往旧钟楼。";return;
  }
  if(exitReady && !options.loopBiome && (!canal||inStreet) && Math.abs(p.x-options.door.x)<.46 && Math.abs(p.y-options.door.y)<.48){
@@ -595,7 +633,7 @@ function tick(dt){
        if(Math.abs(p.x-e.x)<8)impulse(2,Math.sign(p.x-e.x));
        if(Math.abs(p.x-e.x)<3 && p.y<.35)hurt(e.name,"震击",Math.sign(p.x-e.x)||1);if(decoy&&Math.abs(dx)<3 && decoy.y<.35)damageShade(decoy,Math.sign(dx));
         e.phase="weak";e.phaseTime=e.weakTime??1.3;
-      }else{e.phase="armored";e.phaseTime=e.period??2.8}
+      }else{e.phase="armored";e.phaseTime=(e.period??2.8)/e.aggression}
     }
     if(e.phase==="armored" && Math.abs(dx)>1)e.x+=Math.sign(dx)*e.speed*dt;
   }
@@ -729,7 +767,7 @@ function open(data,ch,stage,done,settings={}){
  options=settings;byId("reset").disabled=!!options.onResolve;
  byId("adventure-status").hidden=!options.label;
  byId("adventure-status").textContent=options.label||"";
- catalog=data;character=ch;level=stage;onFinish=done;roller=AshenLoot.makeRoller(data,Math.random,options.world??1);BattleView.clear();active=true;
+ catalog=data;character=ch;level=stage;onFinish=done;roller=AshenLoot.makeRoller(data,Math.random,options.world??1,options.echoBaseFactor);BattleView.clear();active=true;
  trialBoot=undefined;
  const select=byId("trial-titan"),holder=byId("trial-selector");if(holder)holder.hidden=!options.practice||!!landscape();
  if(options.practice&&select?.replaceChildren){select.replaceChildren();for(const row of data.summons){const opt=document.createElement("option");opt.value=row.id;opt.textContent=row.series+" · "+row.name;select.append(opt)}select.onchange=()=>{reset(select.value);screenCanvas.focus()}}

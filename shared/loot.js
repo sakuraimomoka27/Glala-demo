@@ -15,12 +15,62 @@ globalThis.ItemStrength=(()=>{
     return 1+(power-1)/398;
   }
   function roll(world,rng){
-    if(!world||!Number.isInteger(world.level)||!Number.isInteger(world.minPower)||!Number.isInteger(world.maxPower))throw Error("缺少有效的遗迹潮位掉落配置。");
+    if(!world||!Number.isInteger(world.level)||!Number.isInteger(world.minPower)||!Number.isInteger(world.maxPower))throw Error("缺少有效的关卡难度掉落配置。");
     const cap=world.level<=2?399:world.level===3?659:800;
-    if(world.level<1||world.minPower<1||world.minPower>world.maxPower||world.maxPower>cap)throw Error("物品强度超出当前潮位的掉落范围。");
+    if(world.level<1||world.minPower<1||world.minPower>world.maxPower||world.maxPower>cap)throw Error("物品强度超出当前难度的掉落范围。");
     return world.minPower+Math.floor(rng()*(world.maxPower-world.minPower+1));
   }
   return {of,legacy,grade,scale,roll,describe,chanceAtLeast};
+})();
+globalThis.GoldStars=(()=>{
+  // Keys are original exchange-card IDs. Artwork alone never identifies a set item.
+  const sets={
+    132106:{key:"ember",series:"红莲",name:"余烬",range:[8,14],effect:"对半血以下目标的直接踩击伤害 +#%",
+      tiers:["踩踏伤害 +10%","余烬的生效线提高到 75% 生命","熔炉喷发：每踩中三次，在第三次的落点连续喷发三次，半径 2.8 米，每次造成一次基础踩踏伤害"]},
+    132206:{key:"tide",series:"绀碧",name:"潮息",range:[2,4],effect:"每秒额外恢复 # 点体力",
+      tiers:["体力上限 +20","直接踩击命中恢复 4 点体力","潮汐三连：自动水箭每轮沿面朝方向连射三发，间隔 0.10 秒，每发均可独立命中；任意主位可用"]},
+    132306:{key:"stone",series:"钢岩",name:"岩衣",range:[3,6],effect:"减伤增加 # 个百分点",
+      tiers:["生命上限 +15%","总负重至少 10 时直接踩击伤害 +20%","碎岩壁垒：落地获得抵挡一次伤害的岩盾，最快每 4 秒补充；破盾时震击身边 3.5 米内的敌人，造成 180% 基准踩踏伤害"]},
+    132406:{key:"wind",series:"暴风",name:"轻步",range:[1,3],effect:"地面起跳少消耗 # 点体力",
+      tiers:["移动速度 +0.6 米/秒","每次腾空可额外空跳一次","踏风连跃：按住跳跃踩中敌人即免费反弹，并补回一次空跳，可借敌人连续腾空"]},
+    132506:{key:"light",series:"辉煌",name:"樱刃",range:[5,10],effect:"踩踏伤害 +#%",
+      tiers:["直接踩击满血目标时伤害 +15%","直接踩击首领时伤害 +15%","樱花连斩：踩中后剑光从目标逐个跳向附近敌人，每段最远 3 米，最多追斩四名不同敌人，每斩造成一次基础踩踏伤害。周围没有其他目标时，改对原目标追加两段各 60% 的十字斩"]},
+    132606:{key:"shade",series:"宵暗",name:"王令",range:[8,14],effect:"直接踩击首领时伤害 +#%",
+      tiers:["场上只剩一个敌人时，对它的伤害 +12%","击杀恢复 3% 最大生命","王座影卫：每次地面起跳召出两名影卫，最多四名同时索敌、跃击和引敌。影卫继承 60% 攻击白值，任意主位可用"]}
+  };
+  function counts(items){
+    const result={};
+    for(const item of items){
+      const set=sets[item.goldStarId];
+      if(set)result[set.key]=(result[set.key]||0)+1;
+    }
+    return result;
+  }
+  function chance(depth){return depth>=30?.35:depth>=25?.20:depth>=20?.10:0}
+  function roll(catalog,world,factor,depth,first,rng=Math.random){
+    const rate=chance(depth);
+    if(!rate||(!first&&rng()>=rate))return null;
+    const pool=FANTASY_CARDS.exchange;
+    const id=pool[Math.floor(rng()*pool.length)].id,set=sets[id];
+    const base=catalog.equipment.find(e=>!e.sourceMonster&&e.series===set.series)||catalog.equipment.find(e=>!e.sourceMonster);
+    const tier=catalog.rarities.find(t=>t.id==="unique");
+    return EchoItem.mint(catalog,{...base,series:set.series,baseAttack:2,baseHealth:2,weight:1,
+      echoName:FANTASY_CARDS.cards[id].name},tier,rng,world,factor,{goldStarId:id});
+  }
+  function hitBonus(build,enemy,style,remaining){
+    const stars=build.stars,powers=build.powers;
+    const direct=style==="stomp"||style==="core",boss=enemy.kind==="bell";
+    let bonus=0;
+    if(stars.shade>=2 && remaining===1)bonus+=12;
+    if(!direct)return bonus;
+    if(stars.ember && enemy.hp<enemy.max*(stars.ember>=4?.75:.5))bonus+=powers.ember.power;
+    if(stars.light>=2 && enemy.hp===enemy.max)bonus+=15;
+    if(stars.light>=4 && boss)bonus+=15;
+    if(stars.shade && boss)bonus+=powers.shade.power;
+    if(stars.stone>=4 && build.weight>=10)bonus+=20;
+    return bonus;
+  }
+  return {sets,counts,chance,roll,hitBonus};
 })();
 globalThis.EchoItem=(()=>{
   const limits={common:[0,0],fine:[1,2],rare:[3,4],legendary:[4,4],unique:[4,4]};
@@ -29,8 +79,8 @@ globalThis.EchoItem=(()=>{
     const [min,max]=limits[id];
     if(id==="common")return "仅基础攻血";
     const count=min===max?String(min):min+"～"+max;
-    if(id==="unique")return count+" 条固定词缀 · 专属特效 · 同名限一件";
-    return count+" 条魔法词缀"+(id==="legendary"?" · 一条 SSR 威能":"");
+    if(id==="unique")return "普通 UR 同名限一件，4 条固定词缀；金星 UR 可重复装盘，4 条随机词缀与专属威能";
+    return count+" 条魔法词缀"+(id==="legendary"?" · 非泰坦回响附带威能":"");
   }
   function pick(rows,rng,weight){
     let point=rng()*rows.reduce((sum,row)=>sum+weight(row),0);
@@ -57,18 +107,30 @@ globalThis.EchoItem=(()=>{
     return added?quality/added:0;
   }
   function powerSnapshot(p){return {id:p.id,name:p.name,kind:p.kind,power:p.power,radius:p.radius,description:p.description}}
-  function mint(catalog,base,tier,rng,world=catalog.worlds[0]){
+  function mint(catalog,base,tier,rng,world=catalog.worlds[0],echoBaseFactor=1,options={}){
     let unique;
-    if(tier.id==="unique"){
+    const star=GoldStars.sets[options.goldStarId];
+    if(tier.id==="unique" && !star){
       unique=pick(catalog.uniques.filter(u=>u.dropWeight>0),rng,u=>u.dropWeight);
       base=catalog.equipment.find(e=>e.id===unique.template);
     }
     const itemPower=ItemStrength.roll(world,rng),scale=ItemStrength.scale(itemPower);
     const item={format:2,uid:crypto.randomUUID(),kind:"echo",icon:base.icon,baseId:base.id,name:unique?.name||base.echoName||base.name+"回响",
       slot:base.slot,weight:base.weight,skill:base.skill,itemPower,sourceWorld:world.level,
-      baseAttack:Math.round(base.baseAttack*scale),baseHealth:Math.round(base.baseHealth*scale),tier:tier.id,
+      baseAttack:Math.round(base.baseAttack*scale*echoBaseFactor),baseHealth:Math.round(base.baseHealth*scale*echoBaseFactor),tier:tier.id,
       tierName:tier.name,color:tier.color,rank:ranks.indexOf(tier.id),stats:[],rollQuality:0};
-    if(unique){
+    if(echoBaseFactor>1)item.echoBaseFactor=echoBaseFactor;
+    if(star){
+      item.goldStarId=options.goldStarId;item.coreId=options.goldStarId;
+      const native=catalog.affixes.filter(a=>a.series===star.series && eligible(a,"unique"));
+      if(native.length){
+        const affix=pick(native,rng,a=>a.weight),roll=rng();
+        item.stats.push(line(affix,scale,roll,base));
+        item.rollQuality=(roll+3*fill(item.stats,base,tier,catalog,4,rng,scale))/4;
+      }else item.rollQuality=fill(item.stats,base,tier,catalog,4,rng,scale);
+      const [min,max]=star.range,roll=min+Math.floor(rng()*(max-min+1));
+      item.power={id:star.key,kind:star.key,name:star.name,power:roll,description:star.effect.replace("#",String(roll))};
+    }else if(unique){
       item.uniqueId=unique.id;
       item.stats=unique.fixedAffixes.split(/[,，]/).map(id=>{
         const fixed=line(catalog.affixes.find(a=>a.id===id.trim()),scale,1);
@@ -79,7 +141,10 @@ globalThis.EchoItem=(()=>{
     }else{
       const [min,max]=limits[tier.id],count=min+Math.floor(rng()*(max-min+1));
       item.rollQuality=fill(item.stats,base,tier,catalog,count,rng,scale);
-      if(tier.id==="legendary")item.power=powerSnapshot(pick(catalog.powers.filter(p=>p.quality==="legendary"&&p.weight>0),rng,p=>p.weight));
+      if(tier.id==="legendary"){
+        const power=pick(catalog.powers.filter(p=>p.quality==="legendary"&&p.weight>0),rng,p=>p.weight);
+        if(!options.titan)item.power=powerSnapshot(power);
+      }
     }
     return item;
   }
@@ -200,9 +265,9 @@ globalThis.AshenLoot = (() => {
       return entries[left].row;
     };
   }
-  function makeRoller(catalog,rng=Math.random,source=1) {
+  function makeRoller(catalog,rng=Math.random,source=1,echoBaseFactor=1) {
     const world=typeof source==="number"?catalog.worlds.find(row=>row.level===source):source;
-    if(!world)throw Error("掉落来源的遗迹潮位不存在。");
+    if(!world)throw Error("掉落来源的关卡难度不存在。");
     const common=catalog.equipment.filter(row=>!row.sourceMonster);
     const book=globalThis.FANTASY_CARDS, bossRolls=new Map();
     const mode=world.level>=4?"origin":"hard";
@@ -221,7 +286,7 @@ globalThis.AshenLoot = (() => {
         if(!tierRoll)return null;
         const tier=tierRoll(rng),list=byTier.get(tier.id),{id,card}=list[Math.floor(rng()*list.length)];
         const base=bases[card.cell%bases.length];
-        const item=EchoItem.mint(catalog,{...base,echoName:card.name,series:machine.series},tier,rng,world);
+        const item=EchoItem.mint(catalog,{...base,echoName:card.name,series:machine.series},tier,rng,world,echoBaseFactor,{titan:true});
         return Object.assign(item,{coreId:id,fantasyBoss:machine.id,fantasyMode:mode});
       });
     }
@@ -232,7 +297,7 @@ globalThis.AshenLoot = (() => {
     const focused=new Map();
     const rarity = pool(catalog.rarities, "weight");
     function roll(pick,chooseTier=rarity) {
-      return EchoItem.mint(catalog,pick(rng),chooseTier(rng),rng,world);
+      return EchoItem.mint(catalog,pick(rng),chooseTier(rng),rng,world,echoBaseFactor);
     }
     return (level, lastEnemy, monsterId) => {
       if(bossRolls.has(monsterId)){
@@ -266,7 +331,7 @@ globalThis.AshenLoot = (() => {
     bag.shards += salvageValue(item);
   }
   function compare(a,b){
-    return a.rank-b.rank || ItemStrength.of(a)-ItemStrength.of(b) || (a.rollQuality||0)-(b.rollQuality||0);
+    return a.rank-b.rank || (a.echoBaseFactor??1)-(b.echoBaseFactor??1) || ItemStrength.of(a)-ItemStrength.of(b) || (a.rollQuality||0)-(b.rollQuality||0);
   }
   function collect(bag, item) {
     if (bag.items.length >= capacity) {

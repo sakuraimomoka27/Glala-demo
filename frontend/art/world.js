@@ -191,7 +191,7 @@ globalThis.WorldArt = (() => {
     p.poly([[x,y-8],[x+8,y],[x,y+8],[x-8,y]],color);
     p.poly([[x,y-6],[x+6,y],[x,y+6],[x-6,y]],"#363441");
     // The Roman numeral remains legible against the inset shield on small maps.
-    const glyphs=[["1","1","1","1","1"],["101","101","101","101","101"],["10101","10101","10101","10101","10101"],["10101","10101","10101","10010","10010"],["10001","10001","01010","01010","00100"]];
+    const glyphs=[["1","1","1","1","1"],["101","101","101","101","101"],["10101","10101","10101","10101","10101"],["10101","10101","10101","10010","10010"],["10001","10001","01010","01010","00100"],["1000101","1000101","0101001","0101001","0010001"]];
     (glyphs[index]||["010","111","010"]).forEach((row,j)=>[...row].forEach((pixel,i)=>{
       if(pixel==="1")p.rect(x-Math.floor(row.length/2)+i,y-2+j,1,1,color);
     }));
@@ -240,15 +240,20 @@ globalThis.WorldArt = (() => {
     if(chapters.length===WorldFolio.chapters.length&&chapters.every((c,i)=>c.id===WorldFolio.chapters[i])){
       canvas.width=W*2;canvas.height=atlasHeight*2;
       const ctx=canvas.getContext("2d");ctx.setTransform(2,0,0,2,0,0);ctx.imageSmoothingEnabled=false;
-      const chart=WorldFolio.load("itinerary"),p=brush(ctx);
+      const chart=WorldFolio.load("itinerary"),fire=WorldFolio.load("prometheus"),p=brush(ctx);
       layout.landmarks.forEach(point=>point.y=115);
       const paint=()=>{
         p.rect(0,0,W,atlasHeight,"#18262c");
-        if(chart.naturalWidth)ctx.drawImage(chart,0,-12,W,178);
+        const finalWidth=W/chapters.length;
+        if(chart.naturalWidth)ctx.drawImage(chart,0,-12,W-finalWidth,178);
+        if(fire.naturalWidth){
+          const height=Math.min(130,finalWidth*fire.naturalHeight/fire.naturalWidth);
+          ctx.drawImage(fire,W-finalWidth,113-height,finalWidth,height);
+        }
         chapterPassage(p,layout,selectedIndex,stages);
         layout.landmarks.forEach(({x,y},i)=>sigil(p,x,y,i,i===selectedIndex,chapters[i].locked));
       };
-      paint();if(!chart.complete)chart.addEventListener("load",paint,{once:true});
+      paint();for(const img of [chart,fire])if(!img.complete)img.addEventListener("load",paint,{once:true});
       return layout;
     }
     canvas.width=W;canvas.height=atlasHeight;

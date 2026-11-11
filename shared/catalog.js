@@ -10,10 +10,22 @@ const choice = (key, label, options) => ({ key, label, type: "select", options }
 const color = { key: "color", label: "像素色", type: "color" };
 const stat = choice("stat", "属性", ["jump", "fall", "attack", "move", "haste", "regen","burnDamage","ailmentHit","burnTime","shotDamage","shotRate","shotSize","jumpDamage","defense","health","waveDamage","waveSize","slashDamage","slashRate","slashSize","petTime","petHp","petDamage"]);
 
+const formerWorldNames={shore:"巡岸",lantern:"循灯",current:"探潮",crossing:"渡隙",deep:"沉渊",stars:"逆星",night:"尽夜"};
+function worldName(world){
+  if(formerWorldNames[world.id]===world.name){
+    return globalThis.ASHEN_CONTENT.worlds.find(row=>row.id===world.id)?.name??world.name;
+  }
+  return world.name;
+}
+// Older expedition reports stored the rendered unlock label instead of the world id.
+function archivedWorldLabel(label){
+  const world=globalThis.ASHEN_CONTENT.worlds.find(row=>label===row.level+" · "+formerWorldNames[row.id]);
+  return world?world.level+" · "+world.name:label;
+}
 const schema = {
-  worlds:[...idAndName,number("level","潮位阶数",1,30),number("riftGate","所需大秘境通关层数",0,100),
+  worlds:[...idAndName,number("level","难度阶数",1,30),number("riftGate","所需大秘境通关层数",0,100),
     number("minPower","掉落强度下限",1,800),number("maxPower","掉落强度上限",1,800),
-    number("hpScale","敌人生命倍率",1,50),number("damageScale","敌人攻击倍率",1,50)],
+    number("hpScale","怪物生命倍率",1,50),number("damageScale","怪物伤害倍率",1,50)],
   growth:[...idAndName,number("level","等级",1,100),number("totalXp","达到此级所需累计经验",0,10000000),
     number("hpBonus","相对一级的生命上限增量",0,1000),number("staminaBonus","相对一级的体力上限增量",0,2000)],
   characters: [
@@ -37,6 +49,11 @@ const schema = {
   ],
   levels: [
     ...idAndName, { key: "description", label: "关卡说明", type: "text" },
+    {...number("monsterLevel","剧情怪物等级",1,60),optional:true},
+    {...number("storyBossHp","剧情首领基础生命",1,10000),optional:true},
+    {...number("storyFrontHp","剧情前排基础生命",1,10000),optional:true},
+    {...number("storyRearHp","剧情后排普通怪基础生命",1,10000),optional:true},
+    {key:"lesson",label:"剧情操作引导",type:"text",optional:true},
     { key: "positions", label: "敌人横坐标（米，逗号分隔；留空自动布阵）", type: "text" },
     {key:"formation",label:"怪物 ID 顺序（逗号分隔，循环布阵）",type:"text",optional:true,refList:"monsters"},
     {...choice("trialRule","验收目标",["none","dual","chain","multi"]),optional:true},
@@ -52,6 +69,10 @@ const schema = {
   summons:[...idAndName,{...choice("ability","主位能力",["burn","shot","wind","earth","slash","shadow"]),optional:true},{key:"abilityText",label:"固有能力说明",type:"text",optional:true},{key:"burnChances",label:"按层燃烧命中率（%），最多 8 层",type:"text",optional:true},...[["power","基础威力"],["period","间隔/冷却（秒）"],["radius","范围（米）"],["duration","持续（秒）"]].map(([k,t])=>({...number(k,t,0,100),optional:true})),{...ref("boss","对应掉落 Boss","monsters"),optional:true},{...number("dropChance","首次机体掉率",0,1),optional:true},{key:"portrait",label:"机体形象 ID",type:"text",optional:true},{key:"series",label:"加护系列",type:"text"},number("boost","技能增幅（0.6 为 +60%）",0,5),{key:"description",label:"虚数体档案",type:"text"}],
   chapters: [
     ...idAndName, color, choice("theme","区域景观",["belfry","thicket","forge","frost","eclipse"]),
+    {...ref("unlockSummon","章末解锁机甲","summons"),optional:true},
+    {...number("monsterHpBonus","章节怪物基础生命加成（首领双倍）",0,10000),optional:true},
+    {...number("monsterDamageFactor","章节怪物伤害倍率",0.1,1000),optional:true},
+    {...number("echoBaseFactor","章节掉落装备攻血倍率",1,1000),optional:true},
     {key:"rooms",label:"关卡 ID（按解锁顺序）",type:"text",refList:"levels"},
     {key:"description",label:"章节引言",type:"text"},{key:"ending",label:"通章叙事",type:"text"}
   ],
@@ -65,7 +86,11 @@ const schema = {
     {...number("keyCost","消耗钥石",1,10),optional:true},
     {...number("timeLimit","挑战秒数",5,1800),optional:true},
     {...number("maxTier","最高层",1,100),optional:true},
-    {...number("hpGrowth","每层生命增幅",0,3),optional:true},
+    {...number("lesserHpFactor","小秘境相对末关生命倍率",1,100),optional:true},
+    {...number("lootBaseFactor","秘境起始掉落相对末章底材倍率",1,100),optional:true},
+    {...number("lootGrowth","大秘境逐层掉落底材增幅",0,3),optional:true},
+    {...number("damageGrowth","大秘境逐层伤害增幅",0,3),optional:true},
+    {...number("hpGrowth","大秘境逐层生命增幅",0,3),optional:true},
     {...number("speedGrowth","每层移速增幅",0,1),optional:true},
     {...number("tierReward","每层追加碎片",0,100),optional:true},
     {...number("markPower","每层层印伤害",0,10),optional:true}
@@ -99,7 +124,7 @@ const schema = {
 };
 
 const tableLabels = {
-  worlds:"遗迹潮位",powers:"威能",uniques:"UR 回响",growth:"等级成长",summons:"虚数体", chapters:"世界章节", adventures:"冒险", characters: "角色", equipment: "装备", skills: "技能", levels: "关卡",
+  worlds:"关卡难度",powers:"威能",uniques:"UR 回响",growth:"等级成长",summons:"虚数体", chapters:"世界章节", adventures:"冒险", characters: "角色", equipment: "装备", skills: "技能", levels: "关卡",
   monsters: "怪物", rarities: "品质", affixes: "词条"
 };
 const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -131,14 +156,14 @@ function fieldError(table, row, field, indices) {
   if (field.type === "number") {
     if (!Number.isFinite(value) || value < field.min || value > field.max)
       return `须为 ${field.min}～${field.max} 内的数值`;
-    if (["bossOpener","hp","count","trialKills","shards","keys","upgradeCost","upgradeCap","maxTier","timeLimit","keyCost","tierReward","level","totalXp","hpBonus","staminaBonus","xp","goldMin","goldMax"].includes(field.key) && !Number.isInteger(value)) return "须为整数";
+    if (["monsterLevel","storyBossHp","storyFrontHp","storyRearHp","bossOpener","hp","count","trialKills","shards","keys","upgradeCost","upgradeCap","maxTier","timeLimit","keyCost","tierReward","level","totalXp","hpBonus","staminaBonus","xp","goldMin","goldMax"].includes(field.key) && !Number.isInteger(value)) return "须为整数";
     return "";
   }
   if (table === "equipment" && field.key === "skill" && value === "") return "";
   if (typeof value !== "string" || !value.trim()) return "不能为空";
   if (field.key === "id" && (!/^[a-z][a-z0-9_-]{0,47}$/.test(value) || reserved.has(value)))
     return "须为 1～48 位小写字母、数字、下划线或连字符，以字母开头且避开保留名";
-  if (field.type === "text" && value.length > (["description","ending","abilityText"].includes(field.key) ? 256 : 48))
+  if (field.type === "text" && value.length > (["description","ending","abilityText","lesson"].includes(field.key) ? 256 : 48))
     return "文本过长";
   if (field.type === "color" && !/^#[\da-f]{6}$/i.test(value)) return "须为六位十六进制颜色";
   if (field.type === "select" && !field.options.includes(value))
@@ -157,7 +182,7 @@ function validateCatalog(catalog) {
   const errors = [];
   const indices = {};
   const oldLoot=catalog.powers===undefined&&catalog.uniques===undefined;
-  if (catalog.version !== 1) errors.push("配置版本须为数字 1");
+  if (![1,2,3,4,5,6].includes(catalog.version)) errors.push("配置版本须为 1 至 6 的整数");
   for (const key of Object.keys(catalog))
     if (key !== "version" && !Object.hasOwn(schema, key)) errors.push(`未知配置表「${key}」`);
 
@@ -197,10 +222,10 @@ function validateCatalog(catalog) {
       if(table==="monsters" && row.goldMax<row.goldMin)errors.push(location+" 尼奥德上限须大于等于下限");
       if(table==="worlds"){
         const previous=rows[position-1];
-        if(row.level!==position+1||![row.minPower,row.maxPower,row.riftGate].every(Number.isInteger))errors.push(location+" 潮位须连续，强度及门槛须为整数");
-        if(row.minPower>row.maxPower||row.maxPower>(row.level<=2?399:row.level===3?659:800))errors.push(location+" 掉落强度超出该潮位允许范围");
+        if(row.level!==position+1||![row.minPower,row.maxPower,row.riftGate].every(Number.isInteger))errors.push(location+" 难度须连续，强度及门槛须为整数");
+        if(row.minPower>row.maxPower||row.maxPower>(row.level<=2?399:row.level===3?659:800))errors.push(location+" 掉落强度超出该难度允许范围");
         if(row.level>=4&&row.maxPower<660)errors.push(location+" 第四档起须能产出源铸回响");
-        if(row.level>4&&previous&&(row.minPower<=previous.minPower||row.maxPower<previous.maxPower))errors.push(location+" 高阶潮位须提升掉落强度下限并保持或提高上限");
+        if(row.level>4&&previous&&(row.minPower<=previous.minPower||row.maxPower<previous.maxPower))errors.push(location+" 高阶难度须提升掉落强度下限并保持或提高上限");
         if(row.level<=4?row.riftGate!==0:!(row.riftGate>(previous?.riftGate??0)))errors.push(location+" 前四档秘境门槛须为零，后续门槛须逐档提升");
       }
       if(table==="equipment" && [row.baseAttack,row.baseHealth].some(v=>v!==undefined&&!Number.isInteger(v)))errors.push(location+" 白值须为整数");
@@ -224,10 +249,10 @@ function validateCatalog(catalog) {
     }
   }
   const bosses=new Set(),native=new Set();
-  if(Array.isArray(catalog.worlds)&&catalog.worlds.length<4)errors.push("潮位表须包含初始三档和通关档位");
+  if(Array.isArray(catalog.worlds)&&catalog.worlds.length<4)errors.push("难度表须包含初始三档和通关档位");
   if(Array.isArray(catalog.adventures)&&Array.isArray(catalog.worlds)){
     const maxDepth=Math.max(0,...catalog.adventures.filter(a=>a?.kind==="greater").map(a=>a.maxTier??30));
-    if(catalog.worlds.some(w=>w?.riftGate>maxDepth))errors.push("潮位解锁层数超过已配置的限时远征最高层");
+    if(catalog.worlds.some(w=>w?.riftGate>maxDepth))errors.push("难度解锁层数超过已配置的限时远征最高层");
   }
   if(!oldLoot){
     if(catalog.rarities?.map?.(row=>row?.id).join(",")!=="common,fine,rare,legendary,unique")errors.push("品质须按N、R、SR、SSR、UR排列");
@@ -274,6 +299,27 @@ function validateCatalog(catalog) {
 // Only upgrade old data on a detached draft. New trials never depend on their IDs.
 function migrate(catalog){
   const defaults=globalThis.ASHEN_CONTENT;
+  if(catalog.version===1){
+    const oldHp={sentry:38,archer:30,trial_guard:24,forgeguard:48,shade:24,bell_keeper:110,
+      thicket_keeper:97,forge_keeper:106,frost_keeper:115,eclipse_keeper:124,fire_keeper:54};
+    for(const monster of catalog.monsters){
+      const fresh=defaults.monsters.find(row=>row.id===monster.id);
+      if(fresh&&monster.hp===oldHp[monster.id])monster.hp=fresh.hp;
+    }
+    const finale=catalog.levels.find(stage=>stage.id==="ember_pass");
+    if(finale?.storyBossHp===132)finale.storyBossHp=158;
+    const oldScales={lantern:[1.35,1.3],current:[1.8,1.7],crossing:[2.65,2.4],
+      deep:[3.15,2.85],stars:[3.65,3.3],night:[4.2,3.75]};
+    for(const world of catalog.worlds||[]){
+      const old=oldScales[world.id],fresh=defaults.worlds.find(row=>row.id===world.id);
+      if(!old||!fresh)continue;
+      if(world.hpScale===old[0])world.hpScale=fresh.hpScale;
+      if(world.damageScale===old[1])world.damageScale=fresh.damageScale;
+    }
+  }else if(catalog.version===2){
+    const sentry=catalog.monsters.find(row=>row.id==="sentry");
+    if(sentry?.hp===44)sentry.hp=46;
+  }
   const previousTroops={trial_guard:"演武石卫",sentry:"巡廊守卫",archer:"灰弓游魂",forgeguard:"炉心铁卫",shade:"奔袭暗影"};
   for(const row of catalog.monsters){
     if(row.name===previousTroops[row.id])row.name=defaults.monsters.find(m=>m.id===row.id)?.name||row.name;
@@ -354,6 +400,39 @@ function migrate(catalog){
   }
   for(const row of catalog.summons){const s=defaults.summons.find(v=>v.id===row.id);if(s && !row.ability)for(const k of ["ability","abilityText","power","period","duration","radius","burnChances"])row[k]=s[k]}
   for(const row of catalog.summons)if(row.boss && !catalog.monsters.some(m=>m.id===row.boss) && oldSummons)delete row.boss;
+  // Add the sixth chapter to the shipped five-chapter route; retain designer routes and values.
+  const original=["belfry","thicket","forge","frost","eclipse"];
+  const sameRoute=(a,b)=>splitIds(a).join(",")===splitIds(b).join(",");
+  const fireMachine=catalog.summons.find(s=>s.boss==="fire_keeper");
+  if(catalog.chapters.length===5 && original.every((id,i)=>catalog.chapters[i].id===id)
+      && sameRoute(catalog.chapters[0].rooms,"courtyard,ember_pass,belltower") && fireMachine){
+    const finale=structuredClone(defaults.chapters.find(c=>c.id==="cinder"));
+    finale.unlockSummon=fireMachine.id;
+    for(const id of ["crypt_bridge",...splitIds(finale.rooms)])addMissingRoom(id);
+    catalog.chapters[0].rooms=defaults.chapters[0].rooms;
+    catalog.chapters.push(finale);
+  }
+  for(const ch of catalog.chapters){
+    const template=defaults.chapters.find(row=>row.id===ch.id && sameRoute(row.rooms,ch.rooms));
+    if(!template)continue;
+    if(catalog.version<6)for(const key of ["monsterHpBonus","monsterDamageFactor","echoBaseFactor"])ch[key]??=template[key];
+    const boss=defaults.summons.find(s=>s.id===template.unlockSummon)?.boss;
+    const machine=catalog.summons.find(s=>s.boss===boss);
+    if(machine)ch.unlockSummon??=machine.id;
+    for(const id of splitIds(ch.rooms)){
+      const stage=catalog.levels.find(l=>l.id===id),base=defaults.levels.find(l=>l.id===id);
+      if(catalog.version<(id==="thorn_gate"?4:5) && base.storyFrontHp!==undefined && stage.front===base.front)
+        stage.storyFrontHp??=base.storyFrontHp;
+      if(catalog.version<5 && base.storyRearHp!==undefined && stage.rear===base.rear)
+        stage.storyRearHp??=base.storyRearHp;
+      if(catalog.version<5 && stage.front===base.front && stage.rear===base.rear && stage.formation===base.formation){
+        if(id==="thorn_cloister" && stage.positions==="5.8,8.6,10.2,13.2")stage.positions=base.positions;
+        if(id==="thorn_apse" && stage.positions==="5.8,9.3,13")stage.positions=base.positions;
+      }
+      for(const key of ["lesson","monsterLevel","storyBossHp"])if(base[key]!==undefined)stage[key]??=base[key];
+    }
+  }
+  catalog.version=6;
   catalog.growth??=structuredClone(defaults.growth);
   if(!catalog.worlds){
     const depth=Math.max(0,...catalog.adventures.filter(a=>a.kind==="greater").map(a=>a.maxTier??30));
@@ -380,6 +459,7 @@ function migrate(catalog){
       }
     }
   }
+  for(const world of catalog.worlds)world.name=worldName(world);
   const previousNames={common:"普通",fine:"魔法",rare:"稀有",legendary:"传奇",unique:"暗金"};
   for(const rarity of catalog.rarities){
     if(rarity.name===previousNames[rarity.id])rarity.name=defaults.rarities.find(row=>row.id===rarity.id).name;
@@ -409,4 +489,4 @@ function references(data){
   }
   return found;
 }
-return {schema,validateCatalog,prepareCatalog,migrate,references};})();
+return {schema,validateCatalog,prepareCatalog,migrate,references,worldName,archivedWorldLabel};})();

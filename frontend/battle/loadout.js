@@ -30,7 +30,7 @@ globalThis.TitanBuild={
   resolve(catalog,character,disc,summon,sampleWeight=0,previewItem=null){
     const items=Profile.bag.items.filter(item=>disc.includes(item.uid)),totals=Object.create(null);
     let weight=4+sampleWeight,whiteAttack=0,echoHealth=0;
-    const powers={};
+    const stars=GoldStars.counts(items),powers={};
     for(const owned of items){
       const it=owned.uid===previewItem?.uid?previewItem:owned;
       weight+=it.weight;
@@ -40,6 +40,8 @@ globalThis.TitanBuild={
       for(const l of Echoes.lines(it,summon))totals[l.stat]=(totals[l.stat]||0)+l.effective;}
     const val=k=>totals[k]||0,pct=k=>1+val(k)/100;
     const kind=summon?.ability||"",wind=kind==="wind",earth=kind==="earth";
+    const shooter=kind==="shot"?summon:stars.tide>=6?catalog.summons.find(s=>s.ability==="shot"):null;
+    const shadow=kind==="shadow"?summon:stars.shade>=6?catalog.summons.find(s=>s.ability==="shadow"):null;
     const growth=Growth.status(Profile.bag.heroes?.[character.id],catalog);
     const impactMass=Math.max(0,Math.min(2,(weight-4)/8));
     const t=Math.max(0,Math.min(1,(weight-4)/6)),over=Math.max(0,weight-10)/(10+Math.max(0,weight-10));
@@ -48,18 +50,19 @@ globalThis.TitanBuild={
     const rate=(period,stat)=>Math.max(.30,period*(1-limit(val(stat)/100,0,.75)));
     const launch=limit(9.6-1.2*t-.5*over+(wind?.7:0)+val("jump"),7.3,15);
     const whiteHealth=character.hp+growth.hpBonus+echoHealth,blade=powers.return_blade;
-    return {titan:summon,kind,weight,whiteAttack,whiteHealth,powers,maxHp:Math.max(1,whiteHealth+Math.floor(val("health"))),defense:limit(val("defense")/100,0,.7),
+    const baseMaxHp=Math.max(1,whiteHealth+Math.floor(val("health")));
+    return {titan:summon,kind,weight,whiteAttack,whiteHealth,powers,stars,baseMaxHp,maxHp:(stars.stone>=2?Math.floor(baseMaxHp*115/100):baseMaxHp),defense:limit((val("defense")+(powers.stone?.power||0))/100,0,.7),
       windupTicks:Math.max(1,Math.ceil(((wind?44:68)-val("haste"))/(1000*JumpPhysics.step))),
-      staminaMax:(character.stamina??100)+growth.staminaBonus,regen:(character.recovery??15)+val("regen"),jumpCost:character.jumpCost??18,reboundCost:8,waveCost:6,
-      launch,fall:limit(24+21*t+24*over+val("fall"),8,75),move:limit(character.move+(wind?.7:0)+val("move"),.5,10),
-      attack:whiteAttack+val("attack"),jumpMultiplier:pct("jumpDamage"),extraJumps:(wind?1:0)+(powers.air_step?1:0),
+      staminaMax:(character.stamina??100)+growth.staminaBonus+(stars.tide>=2?20:0),regen:(character.recovery??15)+val("regen")+(powers.tide?.power||0),jumpCost:Math.max(1,(character.jumpCost??18)-(powers.wind?.power||0)),reboundCost:8,waveCost:6,
+      launch,fall:limit(24+21*t+24*over+val("fall"),8,75),move:limit(character.move+(wind?.7:0)+val("move")+(stars.wind>=2?.6:0),.5,10),
+      attack:whiteAttack+val("attack"),jumpMultiplier:1+(val("jumpDamage")+(powers.light?.power||0)+(stars.ember>=2?10:0))/100,extraJumps:(wind?1:0)+(powers.air_step?1:0)+(stars.wind>=4?1:0),
       bladeDamage:blade?(blade.power+.65*whiteAttack)*pct("shotDamage"):0,bladeSize:blade?limit(blade.radius*pct("shotSize"),.12,1.5):0,
       rebound:wind?{name:"暴风借力",power,threshold:0}:null,wave:earth?{name:"钢岩冲击",power:power*pct("waveDamage")*(.52+impactMass*.88),radius:limit(radius*pct("waveSize")*(.52+impactMass*.64),.2,4),threshold:8}:null,
-      shieldPeriod:earth?(summon.period??4):0,burnDamage:kind==="burn"?power*pct("burnDamage"):0,burnTime:kind==="burn"?limit(duration+val("burnTime"),.5,12):0,burnChances:kind==="burn"?(summon.burnChances||"100,80,55,35,15").split(/[,，]/).map(n=>limit(Number(n)/100,0,1)):[],ailmentHit:limit(val("ailmentHit")/100,0,1),
-      shotDamage:kind==="shot"?(power+.65*whiteAttack)*pct("shotDamage"):0,shotPeriod:kind==="shot"?rate(period,"shotRate"):0,shotSize:kind==="shot"?limit(radius*pct("shotSize"),.08,1.5):0,
+      shieldPeriod:stars.stone>=6?4:earth?(summon.period??4):0,burnDamage:kind==="burn"?power*pct("burnDamage"):0,burnTime:kind==="burn"?limit(duration+val("burnTime"),.5,12):0,burnChances:kind==="burn"?(summon.burnChances||"100,80,55,35,15").split(/[,，]/).map(n=>limit(Number(n)/100,0,1)):[],ailmentHit:limit(val("ailmentHit")/100,0,1),
+      shotDamage:shooter?(shooter.power+.65*whiteAttack)*pct("shotDamage"):0,shotPeriod:shooter?rate(shooter.period??1.2,"shotRate"):0,shotSize:shooter?limit(shooter.radius*pct("shotSize"),.08,1.5):0,
       slashDamage:kind==="slash"?(power+.85*whiteAttack)*pct("slashDamage"):0,slashPeriod:kind==="slash"?rate(period,"slashRate"):0,slashRadius:kind==="slash"?limit(radius*pct("slashSize"),.2,2.4):0,
-      shadowDamage:kind==="shadow"?power*pct("petDamage"):0,shadowLife:kind==="shadow"?limit(duration+val("petTime"),.5,12):0,
-      shadowHp:kind==="shadow"?2+Math.floor(val("petHp")):0,shadowPeriod:kind==="shadow"?Math.max(.35,period):0,shadowRadius:kind==="shadow"?radius:0};
+      shadowDamage:shadow?(shadow.power+(stars.shade>=6?.6*whiteAttack:0))*pct("petDamage"):0,shadowLife:shadow?limit((shadow.duration??4)+val("petTime"),.5,12):0,
+      shadowHp:shadow?2+Math.floor(val("petHp")):0,shadowPeriod:shadow?Math.max(.35,shadow.period??.85):0,shadowRadius:shadow?shadow.radius:0};
   }
 };
 globalThis.Loadout = {

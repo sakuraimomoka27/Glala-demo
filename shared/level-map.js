@@ -23,7 +23,7 @@ globalThis.LevelMap = (() => {
   const roles={background:null,solid:"rock",platform:"truss",prop:"hoist"};
   const draftKey="ashen:level-workshop:draft:1",appliedKey="ashen:level-workshop:ember_pass:1";
   function slotKey(chapter,room){
-    return chapter==="belfry"&&room==="ember_pass"?appliedKey:"ashen:level-workshop:slot:"+chapter+"/"+room;
+    return (chapter==="belfry"||chapter==="cinder")&&room==="ember_pass"?appliedKey:"ashen:level-workshop:slot:"+chapter+"/"+room;
   }
   const terrain=o=>Object.hasOwn(palette,o.type)&&!!palette[o.type].width;
   function support(objects,x,y){

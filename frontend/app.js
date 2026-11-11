@@ -179,8 +179,8 @@
     }
     view("fight");$("stage-name").textContent=stage.name;
     const world=settings.world??catalog.worlds.find(row=>row.level===settings.worldTier)??catalog.worlds[0];
-    Room.open(catalog,character,stage,done,{...settings,world,hpScale:(settings.hpScale??1)*world.hpScale,
-      damageScale:world.damageScale,label:settings.practice?settings.label:"潮位 "+world.level+" · "+world.name+"　／　"+settings.label,vitals,onProgress:showProgress});
+    const scaling=settings.encounter??{hpScale:(settings.hpScale??1)*world.hpScale,damageScale:world.damageScale};
+    Room.open(catalog,character,stage,done,{...settings,world,...scaling,label:settings.practice?settings.label:"难度 "+world.level+" · "+CatalogRules.worldName(world)+"　／　"+settings.label,vitals,onProgress:showProgress});
   }
   function launch(ci,si,carry){
     const chapter=catalog.chapters[ci];
@@ -196,12 +196,14 @@
       door=layout.door;
     }
     let report;
-    const settings={door,routeNumber:(ci+1)+"-"+(si+1),label:(ci+1)+"-"+(si+1)+"　"+chapter.name+(carry?"　·　上关 +"+carry.gold+" 尼奥德，"+carry.count+" 枚回响"+(carry.finds?.length?"　获得虚数体："+carry.finds.map(id=>catalog.summons.find(s=>s.id===id)?.name||id).join("、"):""):"　·　清除守卫，穿过拱门"),
-      worldTier:WorldDifficulty.current(catalog,Profile.hero).level,hp:carry?.hp,stamina:carry?.stamina,
+    const world=WorldDifficulty.current(catalog,Profile.hero);
+    const story=WorldCampaign.encounter(chapter,si,stage,world);
+    const settings={door,world,encounter:story,routeNumber:(ci+1)+"-"+(si+1),label:(ci+1)+"-"+(si+1)+"　"+chapter.name+(carry?"　·　上关 +"+carry.gold+" 尼奥德，"+carry.count+" 枚回响"+(carry.finds?.length?"　获得虚数体："+carry.finds.map(id=>catalog.summons.find(s=>s.id===id)?.name||id).join("、"):""):"　·　清除守卫，穿过拱门"),
+      hp:carry?.hp,stamina:carry?.stamina,
       onResolve:outcome=>{
         if(!outcome.win)return null;
         const before=new Set(Profile.bag.items.map(item=>item.uid)),shardsBefore=Profile.bag.shards;
-        const progress={chapter:Profile.hero.chapter,best:Profile.hero.best};
+        const progress={chapter:Profile.hero.chapter,best:Profile.hero.best,previousCampaignClear:Profile.hero.previousCampaignClear};
         ticket.recordRoom=receipt=>{
           report=ExpeditionReview.append(carry?.report,chapter.id,stage,(ci+1)+"-"+(si+1),outcome,receipt,Profile.bag,before,shardsBefore);
           if(receipt.last){
@@ -211,6 +213,8 @@
         };
         return WorldCampaign.through(Profile,catalog.chapters,ci,si,ticket,outcome);
       }};
+    settings.label+="　·　怪物 Lv."+story.monsterLevel+(stage.lesson?"　｜　"+stage.lesson:"");
+    if(si===0 && chapter.monsterHpBonus>0)settings.label+="　｜　换上上一章掉落的高攻血回响。";
     fight(stage,settings,outcome=>{
       if(outcome.settlement && !outcome.settlement.last){
         launch(ci,si+1,{hp:Math.min(outfit().maxHp??character.hp,outcome.hp+2),stamina:outcome.stamina,gold:outcome.settlement.gold,count:outcome.rewards.length,finds:outcome.settlement.summons,report});return;
@@ -251,7 +255,7 @@
     nav.append(...buttons);copy.append(nav);page.append(frame,copy);lobby.replaceChildren(page);
   }
   function visitGorge(){
-    const ci=catalog.chapters.findIndex(c=>c.id==="belfry"),chapter=catalog.chapters[ci];
+    const ci=catalog.chapters.findIndex(c=>WorldCampaign.rooms(c).includes("ember_pass")),chapter=catalog.chapters[ci];
     const si=chapter?WorldCampaign.rooms(chapter).indexOf("ember_pass"):-1;
     const stage=catalog.levels.find(l=>l.id==="ember_pass");
     character=catalog.characters.find(c=>c.id==="glala");

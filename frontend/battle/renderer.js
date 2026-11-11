@@ -133,6 +133,18 @@ function draw({clock,cameraKick,enemies,sentinels=[],total,player,character,keys
   let x=e.x*SCALE,y=FLOOR-e.y*SCALE,t=e.age/e.life;
   if(e.kind==="splash"){for(const side of [-1,1]){box(ctx,x+side*(4+10*t),y,5,1,"#a3dace");box(ctx,x+side*(2+6*t),y-7*Math.sin(Math.PI*t),2,2,"#d4f0de")}}
   else if(e.kind==="clip")EffectLibrary.draw(ctx,e.txt,x,y,{progress:t,width:e.radius*SCALE,dir:e.dir,hostile:e.hostile,alpha:Math.min(1,(1-t)*4)});
+  else if(e.kind==="petalArc"){
+    const phase=Math.max(0,Math.min(1,(t-e.hop*.12)*3));
+    if(phase>0){
+      const dx=e.endX*SCALE-x,dy=FLOOR-e.endY*SCALE-y;
+      ctx.save();ctx.globalAlpha=Math.min(1,(1-t)*4);
+      for(let j=0;j<=12;j++){
+        const f=phase*j/12,ax=x+dx*f,ay=y+dy*f-8*Math.sin(Math.PI*f);
+        box(ctx,ax,ay,3,2,j%3?"#ffbedb":"#fff3dd");
+      }
+      ctx.restore();
+    }
+  }
   else if(e.kind==="wave")CombatArt.wave(e);
   else if(e.kind==="burst")CombatArt.burst(e);
   else if(e.kind==="projectileHit")FieldArt.hit(e);

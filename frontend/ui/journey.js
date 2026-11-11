@@ -1,5 +1,9 @@
 globalThis.JourneyView=(()=>{
   const {el,button}=UI;
+  function runDifficulty(run,catalog){
+    const world=run.world??catalog.worlds[0];
+    return "关卡难度 "+world.level+" · "+CatalogRules.worldName(world);
+  }
   function board(node,catalog,character,controls){
     const hero=Profile.hero;
     const message=el("p");
@@ -17,24 +21,24 @@ globalThis.JourneyView=(()=>{
       }
       const label=run.definition.name+(greater?"　第 "+run.level+" 层":"")+"　"+(step+1)+" / "+run.rooms.length+" 房";
       controls.fight(stage,{
-        label,world:run.world,worldTier:1,hp:run.hp??character.hp,deadline:run.deadline,
-        hpScale:greater?1+(run.level-1)*(run.definition.hpGrowth??.22):1,
-        speedScale:greater?1+(run.level-1)*(run.definition.speedGrowth??.03):1,
+        label,world:run.world,worldTier:1,unlockSummon:"",hp:run.hp??character.hp,deadline:run.deadline,
+        encounter:Adventure.roomEncounter(run,catalog),
         onResolve:outcome=>Adventure.settle(Profile,id,step,{...outcome,catalog})
       },result=>summary(result,catalog,context,controls,enter));
     }
     if(hero.run){
       const run=hero.run;
       const stage=catalog.levels.find(row=>row.id===run.rooms[run.step]);
-      node.append(el("h3",run.definition.name),el("p","潮位 "+(run.world?.level??1)+"　·　当前目标　"+(stage?.name||"配置已移除")+"　"+(run.step+1)+" / "+run.rooms.length),
+      node.append(el("h3",run.definition.name),el("p",runDifficulty(run,catalog)+"　·　当前目标　"+(stage?.name||"配置已移除")+"　"+(run.step+1)+" / "+run.rooms.length),
         button("继续冒险",()=>act(enter),"primary"),button("结束本次冒险",()=>{
           if(confirm("结束冒险并返回营地？已结算房间的战利品保留。"))act(()=>{Adventure.abandon(Profile);controls.camp()})
         }),message);
       return;
     }
     const world=WorldDifficulty.current(catalog,hero);
+    node.append(el("p","终局挑战 · 建议携带末章装备。大秘境第 1 层沿用剧情末关的生命基准，随后逐层提升。"));
     const supplies=el("p");supplies.append(EchoIcon.token("keys"),"钥石 ×"+(hero.keys||0)+"　个人最高 "+(hero.best||0)+" 层　",EchoIcon.token("shards"),"碎片 ×"+Profile.bag.shards);
-    node.append(el("p","潮位 "+world.level+" · "+world.name+"　｜　掉落强度 "+world.minPower+"～"+world.maxPower),supplies);
+    node.append(el("p","难度 "+world.level+" · "+world.name+"　｜　掉落强度 "+world.minPower+"～"+world.maxPower),supplies);
     for(const definition of catalog.adventures.filter(row=>row.kind!=="story")){
       const section=el("section",undefined,"path"),done=Adventure.completed(hero,definition);
       section.append(el("h3",definition.name));
@@ -50,13 +54,13 @@ globalThis.JourneyView=(()=>{
             option.value=i;select.append(option);
           }
           level=max;select.value=String(max);select.onchange=()=>{level=Number(select.value)};label.append(select);
-          section.append(label,el("p","限时 "+(definition.timeLimit??100)+" 秒，休整和查阅手记计入时限。入场消耗 "+(definition.keyCost??1)+" 钥石。"));
+          section.append(label,el("p","金星套装 · 限时通关第 20 层起掉落。20–24 层 10%，25–29 层 20%，30 层 35%。首次达到条件必出一枚。"),el("p","限时 "+(definition.timeLimit??100)+" 秒，休整和查阅手记计入时限。入场消耗 "+(definition.keyCost??1)+" 钥石。"));
         }
         const launch=button(definition.kind==="story"?"接受调查并出发":"进入"+(definition.kind==="lesser"?"小秘境":"大秘境"),()=>act(()=>{
           Adventure.begin(Profile,definition,level,Date.now(),catalog);enter();
         }),"primary");
-        if(definition.kind==="greater"&&(hero.keys||0)<(definition.keyCost??1)){launch.disabled=true;launch.textContent="通关小秘境获取钥石"}
-        if(definition.kind!=="story" && !hero.chapter){launch.disabled=true;launch.textContent="完成第一章后开放"}
+        const locked=Adventure.riftEntryReason(hero,definition,catalog);
+        if(locked){launch.disabled=true;launch.textContent=locked}
         section.append(launch);
       }
       node.append(section);
@@ -66,8 +70,8 @@ globalThis.JourneyView=(()=>{
   function roomContext(run,catalog){
     const stage=catalog.levels.find(row=>row.id===run.rooms[run.step]);
     const tier=run.definition.kind==="greater"?"　·　第 "+run.level+" 层":"";
-    return {id:run.id,route:run.definition.name+tier+"　·　潮位 "+(run.world?.level??1),number:run.step+1,stage:stage?.name||"遗迹深处",
-      progress:{chapter:Profile.hero.chapter,best:Profile.hero.best}};
+    return {id:run.id,route:run.definition.name+tier+"　·　"+runDifficulty(run,catalog),number:run.step+1,stage:stage?.name||"遗迹深处",
+      progress:{chapter:Profile.hero.chapter,best:Profile.hero.best,previousCampaignClear:Profile.hero.previousCampaignClear}};
   }
   function expire(run,catalog,controls){
     const current=Profile.hero?.run,now=Date.now();
@@ -101,7 +105,7 @@ globalThis.JourneyView=(()=>{
     else note.append(el("p",receipt?.ending||"已取得的击杀收益和此前结算的战利品保留。"));
     if(receipt?.complete && context.progress){
       const opened=WorldDifficulty.unlocked(catalog,context.progress,Profile.hero);
-      if(opened.length)note.append(el("b","遗迹潮位已开放　"+opened.join("、")));
+      if(opened.length)note.append(el("b","关卡难度已开放　"+opened.join("、")));
     }
     title.prepend(WorldFolio.badge(won?"won":"lost"));head.append(portrait,title,note);
     const metrics=el("div",undefined,"rift-metrics"),income=receipt?.growth||outcome.growth||{};
@@ -112,6 +116,7 @@ globalThis.JourneyView=(()=>{
     metric("获得经验","+"+(income.xp||0),income.levelEnd?"等级 "+income.levelStart+(income.levelStart!==income.levelEnd?" → "+income.levelEnd:""):"");
     metric("获得尼奥德","+"+((receipt?.gold||0)+(income.killGold||0)),"击杀 "+(income.killGold||0)+"　房间 "+(receipt?.gold||0));
     const drops=won?[...outcome.rewards].sort((a,b)=>AshenLoot.compare(b,a)):[];
+    if(receipt?.goldStar)drops.unshift(receipt.goldStar.item);
     metric("回响",drops.length+" 枚",won?"本房结算":"本房未结算");
     const gallery=el("section",undefined,"rift-gallery"),bar=el("div",undefined,"rift-gallery-head"),pages=el("nav"),grid=el("div",undefined,"rift-drops");
     bar.append(el("h2","本房战利品"),pages);gallery.append(bar,grid);
@@ -141,6 +146,7 @@ globalThis.JourneyView=(()=>{
     }
     redraw();
     if(receipt?.summons?.length)gallery.append(UI.summonFinds(catalog,receipt.summons));
+    if(receipt?.goldStar)gallery.append(el("p","金星套装 · "+receipt.goldStar.item.name+(receipt.goldStar.kept?" 已入库":" 已分解")));
     if(receipt?.prize){
       const p=receipt.prize;gallery.append(el("p","第 "+p.tier+" 层　·　用时 "+(p.ms/1000).toFixed(1)+" 秒　"+p.name+" · "+ItemStrength.describe(p.itemPower)+" · 层印伤害 +"+p.attack+(p.kept?" 已入库":" 已分解")));
     }

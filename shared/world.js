@@ -2,7 +2,7 @@ globalThis.WorldDifficulty=(()=>{
   function lockedReason(catalog,hero,row){
     if(row.level<=3)return "";
     const missing=[];
-    if((hero.chapter||0)<catalog.chapters.length)missing.push("通关全部 "+catalog.chapters.length+" 章");
+    if((hero.chapter||0)<catalog.chapters.length && !(hero.previousCampaignClear && catalog.chapters.at(-1)?.id==="cinder"))missing.push("通关全部 "+catalog.chapters.length+" 章");
     if((hero.best||0)<row.riftGate)missing.push("限时远征通关 "+row.riftGate+" 层");
     return missing.join("，");
   }
@@ -11,9 +11,9 @@ globalThis.WorldDifficulty=(()=>{
     return row&&!lockedReason(catalog,hero,row)?row:catalog.worlds[0];
   }
   function select(profile,catalog,level){
-    if(profile.hero.run)throw Error("请先结束本次秘境，再调整遗迹潮位。");
+    if(profile.hero.run)throw Error("请先结束本次秘境，再调整关卡难度。");
     const row=catalog.worlds.find(r=>r.level===level);
-    if(!row)throw Error("未知遗迹潮位。");
+    if(!row)throw Error("未知关卡难度。");
     const reason=lockedReason(catalog,profile.hero,row);
     if(reason)throw Error(reason);
     if(profile.hero.worldTier!==level)profile.commit(()=>{profile.hero.worldTier=level});
@@ -25,13 +25,22 @@ globalThis.WorldDifficulty=(()=>{
 })();
 globalThis.WorldCampaign = (() => {
   const rooms = chapter => chapter.rooms.split(/[,，]/).map(id=>id.trim());
+  function encounter(chapter,si,stage,world){
+    const level=stage.monsterLevel??1,steps=level-1;
+    return {monsterLevel:level,hpScale:world.hpScale*1.05**steps,
+      monsterHpBonus:chapter.monsterHpBonus??0,echoBaseFactor:chapter.echoBaseFactor??1,
+      damageScale:world.damageScale*((chapter.monsterDamageFactor??1)*1.035**steps),aggression:1+.025*steps,
+      storyFrontHp:stage.storyFrontHp,storyRearHp:stage.storyRearHp,storyBossHp:stage.storyBossHp,unlockSummon:chapter.unlockSummon
+        ? (si===rooms(chapter).length-1?chapter.unlockSummon:"") : undefined};
+  }
   function cleared(hero, chapters, ci) {
     const chapter=chapters[ci];
     if(!chapter)return 0;
     const count=rooms(chapter).length;
     const saved=hero.explored?.[chapter.id];
     if(saved!==undefined)return Math.min(count,saved);
-    if(ci===0 && (hero.completed?.first_bell || hero.chapter>=1))return count;
+    if((hero.chapter||0)>ci)return count;
+    if(ci===0 && hero.completed?.first_bell)return count;
     return ci===0 && hero.run?.definition?.id==="first_bell" ? Math.min(count-1,hero.run.step) : 0;
   }
   function allowed(hero,chapters,ci,si) {
@@ -100,7 +109,7 @@ globalThis.WorldCampaign = (() => {
       spawnX:[7.1,27+31+7.4,arenaStart+13.4]};
   }
   function exitLayout(chapter,ci,si){
-    if(chapter.id==="belfry" && rooms(chapter)[si]==="ember_pass")return gorgeLayout(chapter.theme);
+    if(rooms(chapter)[si]==="ember_pass")return gorgeLayout(chapter.theme);
     if(chapter.id==="belfry" && rooms(chapter)[si]==="courtyard"){
       const reach=32.4,streetBlock=24,streetStart=reach*3;
       const platforms=[],decks=[],route=[];
@@ -141,5 +150,5 @@ globalThis.WorldCampaign = (() => {
       [{left:14.6,right:16.8,y:.82},{left:17.1,right:19.3,y:1.68}];
     return {x:18.65,y:high===0?0:platforms.at(-1).y,platforms,theme:chapter.theme};
   }
-  return {rooms,cleared,allowed,enter,through,exitLayout};
+  return {rooms,encounter,cleared,allowed,enter,through,exitLayout};
 })();

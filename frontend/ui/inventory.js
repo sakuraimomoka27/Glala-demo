@@ -1,7 +1,7 @@
 // One screen owns all preview state; a preview never changes the saved formation.
 globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,entry="disc"){
   const {el,button}=UI, profile=Profile;
-  let hero=profile.hero,bag=profile.bag;
+  let hero=profile.hero,bag=profile.bag,equippedStars={};
   Echoes.initialize(profile,catalog);
   const role=catalog.characters.find(c=>c.id===characterId)||catalog.characters.find(c=>c.id==="glala"),coords=[[2,2],[4,2],[2,4],[4,4],[1,1],[5,1],[1,3],[5,3],[1,5],[5,5]];
   const pageSize=40,filters={quality:"",series:"",stat:"",state:"",sort:"recent"};
@@ -33,9 +33,13 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     const powerMetrics=[];
     if(build.bladeDamage)powerMetrics.push("bladeDamage");
     if(build.extraJumps)powerMetrics.push("extraJumps");
-    return {kind:build.kind||"",values,burnChance,powerMetrics};
+    if(build.stars.tide>=6)powerMetrics.push(...byKind.shot);
+    if(build.stars.shade>=6)powerMetrics.push(...byKind.shadow);
+    return {kind:build.kind||"",values,burnChance,powerMetrics,stars:build.stars};
   }
   const applies=(line,s,item)=>TitanBuild.supports(line.stat,s?.ability||"") ||
+    (TitanBuild.domains.shot.includes(line.stat)&&equippedStars.tide>=6) ||
+    (TitanBuild.domains.shadow.includes(line.stat)&&equippedStars.shade>=6) ||
     (["shotDamage","shotSize"].includes(line.stat) && (item?.power?.kind==="return_blade" ||
       bag.items.some(i=>i.power?.kind==="return_blade"&&hero.disc.includes(i.uid))));
   const valueText=(line,value)=>UI.statValue(line.stat,value);
@@ -56,6 +60,17 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
       if(!all&&a===b)continue;
       const [label,unit]=metricFields[key],row=el("div");
       row.append(el("dt",label),el("dd",(a===b?a:a+" → "+b)+(unit?" "+unit:""),a===b?"":"ar-change"));
+      box.append(row);
+    }
+    for(const [id,set] of Object.entries(GoldStars.sets)){
+      const a=from.stars[set.key]||0,b=to.stars[set.key]||0;
+      if((!a&&!b)||(!all&&a===b))continue;
+      const row=el("div"),unlocks=set.tiers.flatMap((effect,i)=>{
+        const need=2*(i+1);
+        if((b>=need)===(a>=need))return [];
+        return [(b>=need?"激活":"失去")+need+"件 · "+effect];
+      });
+      row.append(el("dt",FANTASY_CARDS.cards[id].name),el("dd",[a===b?b+" 件":a+" → "+b+" 件",...unlocks].join("　")));
       box.append(row);
     }
     if(from.kind==="burn" || to.kind==="burn"){
@@ -108,8 +123,17 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     const box=el("div",undefined,"ar-item-info"),base=catalog.equipment.find(x=>x.id===item.baseId);
     const title=el("b",item.name,"ar-name");title.style.color=item.color;
     box.append(title,tag(UI.qualityText(item)),tag((item.stats?.length||0)+" 条"+(item.uniqueId?"固定":"魔法")+"词缀　强化 +"+(item.upgrade||0)),el("p",UI.baseText(item)+"　负重 "+n(item.weight)));
-    if(item.power){const lore=el("p",UI.powerText(item)+(item.uniqueId?"　同名限装一件。":"　相同威能只生效一次。"),"ar-power");lore.style.setProperty("--tier",item.color);box.append(lore)}
+    if(item.power){const lore=el("p",UI.powerText(item)+(item.uniqueId?"　同名限装一件。":"　相同威能取已装最高值。"),"ar-power");lore.style.setProperty("--tier",item.color);box.append(lore)}
     const origin=EchoIcon.origin(item);if(origin)box.append(tag(origin));
+    const set=GoldStars.sets[item.goldStarId];
+    if(set){
+      const count=equippedStars[set.key]||0;
+      box.append(subtitle("同名套装 · 已装 "+count+" 件"));
+      set.tiers.forEach((effect,i)=>{
+        const need=2*(i+1),active=count>=need;
+        box.append(el("p",(active?"已激活":"未激活")+" · "+need+" 件　"+effect,active?"ar-power":"ar-caption"));
+      });
+    }
     if(item.locked)box.append(tag("已锁定 · 可装卸"));
     if(base?.sourceMonster)box.append(el("p","原型："+(catalog.monsters.find(m=>m.id===base.sourceMonster)?.name||base.sourceMonster)+"　·　专属掉落"));
     const current=active();
@@ -388,7 +412,7 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
       bar.append(button(item.locked?"解锁":"锁定",()=>action(()=>profile.commit(()=>{item.locked=!item.locked}))));
       const upgrade=AshenForge.upgradeQuote(catalog,item);
       if(upgrade){const control=button("强化",()=>reviewForge(item,upgrade));control.dataset.forge="强化";bar.append(control)}
-      if(!item.locked&&!item.uniqueId&&item.stats?.length){
+      if(!item.locked&&item.tier!=="unique"&&!item.uniqueId&&item.stats?.length){
         const choice=el("select");choice.setAttribute("aria-label","选择洗练词缀");
         item.stats.forEach((line,i)=>{const op=el("option",(i+1)+" · "+(line.name||UI.stats[line.stat]));op.value=i;choice.append(op)});
         choice.value=String(item.stats.length>1?1:0);
@@ -456,6 +480,7 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
   }
   function draw(){
     hero=profile.hero;bag=profile.bag;
+    equippedStars=GoldStars.counts(bag.items.filter(it=>hero.disc.includes(it.uid)));
     dragEnd();hideTip();
     const focusKey=document.activeElement?.dataset?.focusKey;
     const shell=el("div",undefined,"arsenal"),head=el("div",undefined,"ar-banner"),name=el("div");

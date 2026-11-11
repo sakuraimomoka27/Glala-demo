@@ -57,7 +57,7 @@ globalThis.ExpeditionReportView = (()=>{
     const story=el("div",undefined,"report-story"),start=rooms[0]?.number,end=rooms.at(-1)?.number;
     if(start)story.append(el("b","本次行程　"+start+(start!==end?" → "+end:""),"report-route"));
     story.append(el("p",chapter?.ending||"此次远征已结束。","report-ending"));
-    if(report.unlockedWorlds?.length)story.append(el("b","遗迹潮位已开放　"+report.unlockedWorlds.join("、"),"report-route"));
+    if(report.unlockedWorlds?.length)story.append(el("b","关卡难度已开放　"+report.unlockedWorlds.map(CatalogRules.archivedWorldLabel).join("、"),"report-route"));
     banner.append(heading,story,victoryPainting(chapter));
     const metrics=el("div",undefined,"report-metrics");
     const bounty=total(rooms,"gold"),earnings=total(rooms,"killGold"),first=rooms[0],last=rooms.at(-1);

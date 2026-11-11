@@ -1,7 +1,7 @@
 /* Menu art uses the same source pixel grid as the field. This module does not access the save. */
 globalThis.WorldFolio=(()=>{
   const base=new URL(".",document.currentScript.src),images=new Map();
-  const chapters=["belfry","thicket","forge","frost","eclipse"];
+  const chapters=["belfry","thicket","forge","frost","eclipse","cinder"];
   const rigs=["atlas","dione","mnemosyne","prometheus","cronus","hecate"];
   const props=["chests","kiln","instrument","desk"];
   const reduced=matchMedia("(prefers-reduced-motion: reduce)");
@@ -43,7 +43,7 @@ globalThis.WorldFolio=(()=>{
     (marks[key]||marks.seal).forEach((row,j)=>[...row].forEach((p,i)=>{if(p!=="."){g.fillStyle=colors[p];g.fillRect(i*2,2+j*2,2,2)}}));
     return c;
   }
-  function landmark(id){return chapters.includes(id)?image(id,"folio-landmark"):null}
+  function landmark(id){return chapters.includes(id)?image(id==="cinder"?"prometheus":id,"folio-landmark"):null}
   function rig(id){return rigs.includes(id)?image(id,"folio-rig"):null}
   const baseline=156,layout=Object.freeze({width:576,height:184,npcBaseline:baseline});
   let townBase,baseReady=false;

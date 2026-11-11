@@ -20,7 +20,7 @@ globalThis.UI = (() => {
   function button(label, action, cls) {
     const node = el("button", label, cls); node.type = "button"; node.onclick = action; return node;
   }
-  const tableNames = { worlds:"遗迹潮位",powers:"威能",uniques:"UR 回响",growth:"等级成长", summons:"虚数体", chapters:"世界章节", adventures:"冒险", characters:"角色", equipment:"回响", skills:"技能", levels:"关卡", monsters:"怪物", rarities:"品质", affixes:"词条" };
+  const tableNames = { worlds:"关卡难度",powers:"威能",uniques:"UR 回响",growth:"等级成长", summons:"虚数体", chapters:"世界章节", adventures:"冒险", characters:"角色", equipment:"回响", skills:"技能", levels:"关卡", monsters:"怪物", rarities:"品质", affixes:"词条" };
   const slots = {boots:"战靴", armor:"护甲", charm:"护符", ring:"戒指"};
   const stats = {
     jump:"起跳初速",fall:"下落加速度",attack:"踩踏伤害",move:"移动速度",haste:"起跳准备缩短",regen:"体力恢复",
@@ -41,7 +41,7 @@ globalThis.UI = (() => {
   }
   function baseText(item){
     if(item.baseAttack===undefined)return "";
-    return "固定攻击 +"+item.baseAttack+"　固定生命 +"+item.baseHealth;
+    return "固定攻击 +"+item.baseAttack+"　固定生命 +"+item.baseHealth+(item.echoBaseFactor>1?"　底材倍率 ×"+item.echoBaseFactor:"");
   }
   function qualityText(item,name=item.tierName){
     return Number.isInteger(item.itemPower)?name+" · "+ItemStrength.describe(item.itemPower):name;
@@ -52,7 +52,7 @@ globalThis.UI = (() => {
   }
   function powerText(item){
     if(!item.power)return "";
-    return (item.uniqueId?"UR 专属特效":"SSR 威能")+" · "+item.power.name+"　"+item.power.description;
+    return (item.goldStarId?"金星威能":item.uniqueId?"UR 专属特效":"SSR 威能")+" · "+item.power.name+"　"+item.power.description;
   }
   function statsText(item) {
     const lines=(item.stats||[]).filter(line=>line.value).map(line=>(line.name?line.name+" · ":"")+
@@ -76,7 +76,7 @@ globalThis.UI = (() => {
     const guide=el("details",undefined,"echo-guide");
     guide.append(el("summary","回响图鉴 · 品质与词缀"),el("p","每枚回响都有固定攻击和生命。攻击白值影响跃击、震波和直接攻击；灼烧与影仆按各自的词缀结算。"));
     const archive=el("a","查看幻想战与金星兑换卡面");archive.href="echoes.html";archive.target="_blank";archive.rel="noopener";guide.append(archive);
-    guide.append(el("p","物品强度决定固定攻血及词缀区间。潮位 3 起可掉落「"+ItemStrength.describe(400)+"」及以上的回响。潮位 4 开放「"+ItemStrength.describe(660)+"」品级。"));
+    guide.append(el("p","物品强度决定固定攻血及词缀区间。从「"+catalog.worlds[2].name+"」难度起可掉落「"+ItemStrength.describe(400)+"」及以上的回响。从「"+catalog.worlds[3].name+"」难度起开放「"+ItemStrength.describe(660)+"」品级。"));
     for(const tier of catalog.rarities){
       const row=el("div"),name=el("b",tier.name);name.style.color=tier.color;row.append(name,el("span",EchoItem.qualityRule(tier.id)));guide.append(row);
     }

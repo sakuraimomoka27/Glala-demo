@@ -13,6 +13,8 @@ globalThis.Profile = (() => {
     bag.gold ??= 0;
     if (bag.selected && bag.heroes[bag.selected]) {
       const hero=bag.heroes[bag.selected];
+      // Old graduates keep the tide tiers they earned before the sixth chapter existed.
+      hero.previousCampaignClear??=(hero.chapter||0)>=5;
       hero.totalXp??=0;
       bag.worn=hero.worn;
     }
