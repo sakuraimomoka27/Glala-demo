@@ -72,6 +72,9 @@
 .workshop-dialog::backdrop{background:#100c16bb}
 .salvage-title{padding:8px 13px;background:#342c34;border-left:3px solid #b89569}
 .salvage-title small{color:#d3af7e}.salvage-title h2{margin:3px 0;color:#f0d5ad;font:700 24px/1.35 SimSun,serif}
+.salvage-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.salvage-filters label{color:#d3bfab;font-size:13px}
+.salvage-filters select,.salvage-filters input{display:block;box-sizing:border-box;width:100%;margin-top:3px;padding:5px 7px;border:1px solid #77645a;background:#211f26;color:#eedfc6;font:inherit}
 .salvage-payout,.salvage-actions,.salvage-pages{display:flex;align-items:center;gap:10px}
 .salvage-payout{justify-content:space-between;padding:12px 2px;color:#cbbbc8}
 .salvage-payout b{font-size:17px;color:#d7b6e8}

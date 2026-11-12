@@ -28,7 +28,7 @@ globalThis.AtlasWeaponArt=(()=>{
   function field(e){
     const g=e.guard;
     PixelFX.volley(g.zones,g.age,e.phase==="warning",Math.min(1,g.age/g.warning),
-      z=>AtlasWeapons.port(e,z),z=>AtlasWeapons.path(e,z),PixelFX.ordnanceColors);
+      z=>AtlasWeapons.port(e,z),z=>AtlasWeapons.path(e,z),PixelFX.ordnanceColors,SkillPatterns.weaponStyle(g.move[2]));
   }
   return {pod,field};
 })();

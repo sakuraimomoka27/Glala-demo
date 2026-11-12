@@ -57,7 +57,8 @@ globalThis.ContentEditor = function(root, leave) {
         control=el("select");
         const names=["slot","focusSlot"].includes(f.key)?UI.slots:f.key==="stat"?UI.stats:f.key==="ability"?{burn:"燃烧",shot:"水平水箭",wind:"高速连跳",earth:"护盾与冲击",slash:"周身剑光",shadow:"残影跃击"}:f.key==="kind"?{story:"剧情章节",lesser:"小秘境",greater:"大秘境",bell:"震击守关者",guard:"近战守卫",bow:"弓手",rebound:"借力反弹",wave:"震波"}:f.key==="trialRule"?{none:"普通关卡",dual:"随主位：连跳或冲击",chain:"前后排连踩",multi:"单踏群杀"}:{};
         const rarityNames=["minTier","quality"].includes(f.key)?Object.fromEntries(draft.rarities.map(r=>[r.id,r.name])):{};
-        const values=f.type==="select"?f.options.map(value=>[value,rarityNames[value]??names[value]??value]):draft[f.ref]
+        const values=f.type==="select"?f.options.map(value=>[value,f.key==="fieldAttack"?FieldCombat.profiles[value].attack+" · "+value:f.key==="rangedEffect"?ProjectileEffects.definitions[value].name:rarityNames[value]??names[value]??value]):draft[f.ref]
+          .filter(target=>f.key!=="mainAbility"||target.ability)
           .filter(target=>!(f.key==="boot"||f.bootsOnly)||target.slot==="boots").map(target=>[target.id,target.name+" · "+target.id]);
         if(f.key==="skill"||f.optional&&!f.options?.includes(""))values.unshift(["","无"]);
         for(const [value,name] of values){const opt=el("option",name);opt.value=value;control.append(opt)}
@@ -76,7 +77,58 @@ globalThis.ContentEditor = function(root, leave) {
         }
         if(f.key==="id"||f.ref||f.refList)showRefs();
       };
-      label.append(control);form.append(label);
+      label.append(control);
+      if(f.type==="echoAffixes"||f.type==="echoPowers"){
+        const affix=f.type==="echoAffixes",pick=el("select"),amount=el("input");
+        control.placeholder=affix?"例如 shot_damage:25,shot_size:15":"例如 wind_step,tidal_blade";
+        pick.setAttribute("aria-label",affix?"选择回响词条":"选择回响威能");
+        for(const row of draft[f.refList]){
+          const option=el("option",row.name+" · "+row.id);option.value=row.id;pick.append(option);
+        }
+        amount.type="number";amount.min="0";amount.step="any";amount.placeholder="使用词条下限";
+        amount.setAttribute("aria-label","词条固定数值");label.append(pick);if(affix)label.append(amount);
+        label.append(button(affix?"设置词条":"添加威能",()=>{
+          try{
+            const entries=EchoModifiers.entries(control.value,affix).filter(e=>e.id!==pick.value);
+            const entry=pick.value+(affix&&amount.value!==""?":"+amount.value:"");
+            entries.push(...EchoModifiers.entries(entry,affix));
+            control.value=entries.map(e=>e.id+(e.value===undefined?"":":"+e.value)).join(",");
+            control.dispatchEvent(new Event("input"));
+          }catch(error){status.textContent=error.message}
+          control.focus();
+        }));
+      }
+      if(f.type==="echoSets"){
+        control.placeholder="例如 ember:6,tide:4";
+        const set=el("select"),count=el("select");
+        set.setAttribute("aria-label","选择回响套装");count.setAttribute("aria-label","选择件数");
+        for(const entry of Object.values(EchoSets.byKey)){
+          const option=el("option",entry.series+" · "+entry.key);option.value=entry.key;set.append(option);
+        }
+        for(const n of [1,2,4,6]){const option=el("option",n+" 件");option.value=n;count.append(option)}
+        count.value="6";
+        label.append(set,count,button("设置件数",()=>{
+          try{
+            const entries=EchoSets.parse(control.value);
+            entries[set.value]=Number(count.value);
+            control.value=Object.entries(entries).map(([id,n])=>id+":"+n).join(",");
+            control.dispatchEvent(new Event("input"));
+          }catch(error){status.textContent=error.message}
+          control.focus();
+        }));
+      }
+      if(f.type==="skillList"){
+        control.placeholder="按顺序填写 ID，以逗号分隔";
+        const pick=el("select");pick.setAttribute("aria-label","选择要追加的技能");
+        for(const id of CombatSkills.ids){
+          const option=el("option",CombatSkills.definitions[id].name+" · "+id);option.value=id;pick.append(option);
+        }
+        label.append(pick,button("追加技能",()=>{
+          control.value=[control.value.trim(),pick.value].filter(Boolean).join(",");
+          control.dispatchEvent(new Event("input"));control.focus();
+        }));
+      }
+      form.append(label);
     }
   }
   function add(){

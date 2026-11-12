@@ -8,7 +8,7 @@ const number = (key, label, min, max) => ({ key, label, type: "number", min, max
 const ref = (key, label, table) => ({ key, label, type: "ref", ref: table });
 const choice = (key, label, options) => ({ key, label, type: "select", options });
 const color = { key: "color", label: "像素色", type: "color" };
-const stat = choice("stat", "属性", ["jump", "fall", "attack", "move", "haste", "regen","burnDamage","ailmentHit","burnTime","shotDamage","shotRate","shotSize","jumpDamage","defense","health","waveDamage","waveSize","slashDamage","slashRate","slashSize","petTime","petHp","petDamage"]);
+const stat = choice("stat", "属性", EchoModifiers.statIds);
 
 const formerWorldNames={shore:"巡岸",lantern:"循灯",current:"探潮",crossing:"渡隙",deep:"沉渊",stars:"逆星",night:"尽夜"};
 function worldName(world){
@@ -22,13 +22,21 @@ function archivedWorldLabel(label){
   const world=globalThis.ASHEN_CONTENT.worlds.find(row=>label===row.level+" · "+formerWorldNames[row.id]);
   return world?world.level+" · "+world.name:label;
 }
+const mainAbility={...ref("mainAbility","固有主位能力（引用虚数体）","summons"),optional:true};
+const fieldAttack={...choice("fieldAttack","普通攻击出手方式",Object.keys(FieldCombat.profiles)),optional:true};
+const combatSkills={key:"combatSkills",label:"战斗技能顺序",type:"skillList",optional:true};
+const echoSets={key:"echoSets",label:"固有回响套装（套装 ID:件数）",type:"echoSets",optional:true};
+const echoAffixes={key:"echoAffixes",label:"固有回响词条（词条 ID 或 ID:数值）",type:"echoAffixes",refList:"affixes",optional:true};
+const echoPowers={key:"echoPowers",label:"固有回响威能（威能 ID）",type:"echoPowers",refList:"powers",optional:true};
+const skillPower={...number("skillPower","技能基础伤害",.01,1000),optional:true};
+const skillInterval={...number("skillInterval","技能轮转间隔（秒）",.1,60),optional:true};
 const schema = {
   worlds:[...idAndName,number("level","难度阶数",1,30),number("riftGate","所需大秘境通关层数",0,100),
     number("minPower","掉落强度下限",1,800),number("maxPower","掉落强度上限",1,800),
     number("hpScale","怪物生命倍率",1,50),number("damageScale","怪物伤害倍率",1,50)],
   growth:[...idAndName,number("level","等级",1,100),number("totalXp","达到此级所需累计经验",0,10000000),
     number("hpBonus","相对一级的生命上限增量",0,1000),number("staminaBonus","相对一级的体力上限增量",0,2000)],
-  characters: [
+  characters: [mainAbility,fieldAttack,combatSkills,echoSets,echoAffixes,echoPowers,skillPower,skillInterval,
     ...idAndName, choice("sprite","角色形象",["glala800006","witch","knight","scout"]), number("hp", "生命", 1, 100), number("move", "移动速度（米/秒）", 0.1, 15),
     {...ref("boot", "旧版初始装备", "equipment"),optional:true}, color,
     {...number("stamina","体力上限",30,500),optional:true},{...number("recovery","每秒回体",3,100),optional:true},{...number("jumpCost","起跳体力",1,30),optional:true}
@@ -66,7 +74,7 @@ const schema = {
     ref("rear", "后排怪物", "monsters"), number("dropChance", "首次掉落概率（0–1）", 0, 1),
     number("bonusChance", "额外掉落概率（0–1）", 0, 1)
   ],
-  summons:[...idAndName,{...choice("ability","主位能力",["burn","shot","wind","earth","slash","shadow"]),optional:true},{key:"abilityText",label:"固有能力说明",type:"text",optional:true},{key:"burnChances",label:"按层燃烧命中率（%），最多 8 层",type:"text",optional:true},...[["power","基础威力"],["period","间隔/冷却（秒）"],["radius","范围（米）"],["duration","持续（秒）"]].map(([k,t])=>({...number(k,t,0,100),optional:true})),{...ref("boss","对应掉落 Boss","monsters"),optional:true},{...number("dropChance","首次机体掉率",0,1),optional:true},{key:"portrait",label:"机体形象 ID",type:"text",optional:true},{key:"series",label:"加护系列",type:"text"},number("boost","技能增幅（0.6 为 +60%）",0,5),{key:"description",label:"虚数体档案",type:"text"}],
+  summons:[combatSkills,echoSets,echoAffixes,echoPowers,skillPower,skillInterval,...idAndName,{...choice("ability","主位能力",["burn","shot","wind","earth","slash","shadow"]),optional:true},{key:"abilityText",label:"固有能力说明",type:"text",optional:true},{key:"burnChances",label:"按层燃烧命中率（%），最多 8 层",type:"text",optional:true},...[["power","基础威力"],["period","间隔/冷却（秒）"],["radius","范围（米）"],["duration","持续（秒）"]].map(([k,t])=>({...number(k,t,0,100),optional:true})),{...ref("boss","对应掉落 Boss","monsters"),optional:true},{...number("dropChance","首次机体掉率",0,1),optional:true},{key:"portrait",label:"机体形象 ID",type:"text",optional:true},{key:"series",label:"加护系列",type:"text"},number("boost","技能增幅（0.6 为 +60%）",0,5),{key:"description",label:"虚数体档案",type:"text"}],
   chapters: [
     ...idAndName, color, choice("theme","区域景观",["belfry","thicket","forge","frost","eclipse"]),
     {...ref("unlockSummon","章末解锁机甲","summons"),optional:true},
@@ -95,8 +103,10 @@ const schema = {
     {...number("tierReward","每层追加碎片",0,100),optional:true},
     {...number("markPower","每层层印伤害",0,10),optional:true}
   ],
-  monsters: [
+  monsters: [mainAbility,fieldAttack,combatSkills,echoSets,echoAffixes,echoPowers,skillPower,{...number("echoWeight","套装判定负重（默认 4）",0,300),optional:true},
     ...idAndName, choice("kind", "行为", ["guard", "bow","bell"]), number("hp", "生命", 1, 10000),
+    {...choice("rangedEffect","弓手射击效果（原生弓手留空时用已激活的水箭，否则用普通箭）",Object.keys(ProjectileEffects.definitions)),optional:true},
+    {...number("rangedPower","弓手基础伤害（默认 1）",.01,100),optional:true},
     number("speed", "移动速度（米/秒）", 0, 15), color,
     {...number("xp","击杀经验",0,10000),optional:true},{...number("goldMin","击杀尼奥德下限",0,10000),optional:true},
     {...number("goldMax","击杀尼奥德上限",0,10000),optional:true},
@@ -116,7 +126,7 @@ const schema = {
     ...idAndName, stat, {key:"series",label:"词条系列",type:"text",optional:true}, number("min", "随机下限", 0, 100), number("max", "随机上限", 0, 100),
     number("weight", "词条权重", 0, 10000)
   ],
-  powers:[...idAndName,choice("quality","威能品质",["legendary","unique"]),choice("kind","行为",["air_step","impact_ring","return_blade"]),
+  powers:[...idAndName,choice("quality","威能品质",["legendary","unique"]),choice("kind","行为",["air_step","impact_ring","return_blade","opening_stomp","spent_stomp","repeat_stamina","kill_wave","kill_mend",...EchoModifiers.machineKinds]),
     number("weight","抽取权重",0,10000),number("power","威力或次数",.01,100),number("radius","半径（米）",0,6),
     {key:"description",label:"威能描述",type:"text"}],
   uniques:[...idAndName,ref("template","回响底材","equipment"),ref("powerId","专属特效","powers"),
@@ -134,6 +144,22 @@ const splitIds = value => value.split(/[,，]/).map(id=>id.trim());
 function fieldError(table, row, field, indices) {
   const value = row[field.key];
   if(field.optional && (value===undefined || value===""))return "";
+  if(field.key==="fieldAttack"&&row.kind==="bell")return "普通攻击出手方式适用于近战怪和弓手";
+  if(field.type==="echoSets"){
+    try{EchoSets.parse(value);return ""}catch(error){return error.message}
+  }
+  if(field.type==="echoAffixes"||field.type==="echoPowers"){
+    try{
+      const refs=EchoModifiers.entries(value,field.type==="echoAffixes");
+      const bad=refs.find(({id})=>!indices[field.refList]?.has(id));
+      return bad?"引用了不存在的"+tableLabels[field.refList]+"「"+bad.id+"」":"";
+    }catch(error){return error.message}
+  }
+  if(field.type==="skillList"){
+    if(typeof value!=="string")return "须为技能 ID 列表";
+    const invalid=splitIds(value).find(id=>!CombatSkills.ids.includes(id));
+    return invalid===undefined?"":"包含无效技能「"+invalid+"」";
+  }
   if(field.key==="burnChances"){const rates=typeof value==="string"?value.split(/[,，]/).map(v=>v.trim()!==""?Number(v):NaN):[];return rates.length>=1&&rates.length<=8&&rates.every((n,i)=>Number.isFinite(n)&&n>=0&&n<=100&&(i===0||n<=rates[i-1]))?"":"须为从高到低的 1～8 个百分数"}
   if(field.refList){
     if(typeof value!=="string")return "须为逗号分隔的 ID";
@@ -171,6 +197,8 @@ function fieldError(table, row, field, indices) {
   if (field.type === "ref") {
     const target = indices[field.ref].get(value);
     if (!target) return `引用了不存在的${tableLabels[field.ref]}「${value}」`;
+    if(field.key==="mainAbility"&&!target.ability&&!globalThis.ASHEN_CONTENT.summons.some(s=>s.id===target.id&&s.ability))
+      return "须引用已配置主位能力的虚数体";
     if ((field.bootsOnly || table === "characters" && field.key === "boot") && target.slot !== "boots")
       return "须引用靴子部位";
   }
@@ -182,7 +210,7 @@ function validateCatalog(catalog) {
   const errors = [];
   const indices = {};
   const oldLoot=catalog.powers===undefined&&catalog.uniques===undefined;
-  if (![1,2,3,4,5,6].includes(catalog.version)) errors.push("配置版本须为 1 至 6 的整数");
+  if (![1,2,3,4,5,6,7,8,9].includes(catalog.version)) errors.push("配置版本须为 1 至 9 的整数");
   for (const key of Object.keys(catalog))
     if (key !== "version" && !Object.hasOwn(schema, key)) errors.push(`未知配置表「${key}」`);
 
@@ -264,7 +292,7 @@ function validateCatalog(catalog) {
     for(const p of powers){
       if((p.kind==="return_blade")!==(p.quality==="unique"))errors.push("折返刃为UR 专属机制："+p.id);
       if(p.kind==="air_step" && p.power!==1)errors.push("逐风的额外空跳次数须为 1");
-      if(p.kind!=="air_step" && !(p.radius>0))errors.push("攻击威能半径须大于零："+p.id);
+      if(["impact_ring","return_blade","kill_wave"].includes(p.kind) && !(p.radius>0))errors.push("攻击威能半径须大于零："+p.id);
     }
     const uniqueRows=[...indices.uniques.values()],names=new Set();
     if(!uniqueRows.some(u=>u.dropWeight>0))errors.push("UR 池须有可抽取的回响");
@@ -432,7 +460,22 @@ function migrate(catalog){
       for(const key of ["lesson","monsterLevel","storyBossHp"])if(base[key]!==undefined)stage[key]??=base[key];
     }
   }
-  catalog.version=6;
+  if(catalog.version<7){
+    const archer=catalog.monsters.find(m=>m.id==="archer" && m.kind==="bow");
+    if(archer && archer.rangedEffect===undefined)archer.rangedEffect=defaults.monsters.find(m=>m.id==="archer")?.rangedEffect;
+  }
+  if(catalog.version<8 && catalog.powers){
+    const added=["first_bell","last_breath","rill_step","knell","mend"];
+    for(const power of defaults.powers.filter(p=>added.includes(p.id))){
+      if(!catalog.powers.some(p=>p.id===power.id))catalog.powers.push(structuredClone(power));
+    }
+  }
+  if(catalog.version<9&&catalog.powers){
+    const existing=new Set(catalog.powers.map(p=>p.id));
+    for(const power of defaults.powers)
+      if(EchoModifiers.machineKinds.includes(power.id)&&!existing.has(power.id))catalog.powers.push(structuredClone(power));
+  }
+  catalog.version=9;
   catalog.growth??=structuredClone(defaults.growth);
   if(!catalog.worlds){
     const depth=Math.max(0,...catalog.adventures.filter(a=>a.kind==="greater").map(a=>a.maxTier??30));
@@ -482,7 +525,7 @@ function references(data){
   const found=[],targets=Object.fromEntries(Object.keys(schema).map(t=>[t,new Set(data[t].map(r=>r.id))]));
   for(const [table,fields] of Object.entries(schema))for(const [index,row] of data[table].entries()){
     for(const f of fields){const target=f.ref||f.refList;if(!target||!row[f.key])continue;
-      const ids=f.refList?splitIds(String(row[f.key])):[row[f.key]];
+      const ids=f.refList?splitIds(String(row[f.key])).map(entry=>f.type==="echoAffixes"?entry.split(/[:：]/)[0].trim():entry):[row[f.key]];
       for(const id of new Set(ids))found.push({table,index,field:f.key,label:f.label,target,id,
         broken:!targets[target].has(id)});
     }

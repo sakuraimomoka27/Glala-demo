@@ -2,10 +2,12 @@
 globalThis.Room = (() => {
 const byId = id => document.getElementById(id);
 const keys = new Set(), step = JumpPhysics.step;
-let active = false, character, level, loadout, player, enemies, arrows, effects;
+let active = false, character, level, loadout, player, enemies, effects;
 let started, finished, kills, buffer, clock=0, rewards, roller, onFinish, catalog, total;
 let last=0, accumulator=0, session=0, renderFrames=0, renderTime=0, trialBoot,fallDrops=[];
 let titan=null,jumpStartKills=0,featuredDrop=null;
+let skillInterval=2,skillClock=0;
+const skillCasters=new Set();
 let roomGrowth,pendingIncome,awardKills=false,defeatCause="";
 let options={},settledResult,guardianEnemy,exitReady=false, floorHeight=0,summonDrops=[];
 let panelLocked=false;
@@ -43,6 +45,7 @@ function updateTrial(){
 }
 function report(msg){ byId("report").textContent=msg; }
 function reset(override) {
+  skillCasters.clear();
   cameraKick=null;hitPauseTicks=0;
   settledResult=null;exitReady=false;floorHeight=0;panelLocked=false;defeatCause="";
   struckThisDescent.clear();
@@ -68,13 +71,18 @@ function reset(override) {
   pendingIncome={xp:0,gold:0,count:0,x:0};
   options.onProgress?.(status,null);
   const select=byId("trial-titan");if(select?.options && options.practice)select.value=loadout.titan?.id||"";
-  if(options.practice && byId("trial-instructions"))byId("trial-instructions").textContent=(options.bossDrill?level.description:loadout.titan?.abilityText||level.description)+(loadout.kind==="earth"?" 演练装载 8 点额外负重。":"");
+  if(options.practice && byId("trial-instructions"))byId("trial-instructions").textContent=(options.bossDrill?level.description:loadout.mainAbility?.abilityText||level.description)+(loadout.kind==="earth"?" 演练装载 8 点额外负重。":"");
   const windControl=byId("wind-control");if(windControl){
     windControl.hidden=!loadout.extraJumps;
-    windControl.textContent="；空中可再跳 "+loadout.extraJumps+" 次"+(loadout.stars?.wind>=6?"，按住踩中可免费反弹并补回空跳":loadout.rebound?"，按住命中可借力":"");
+    windControl.textContent="；空中可再跳 "+loadout.extraJumps+" 次"+(loadout.echo.freeBounce?"，按住踩中可免费反弹并补回空跳":loadout.rebound?"，按住命中可借力":"");
   }
-   titan=(loadout.kind||loadout.bladeDamage||loadout.shotPeriod||loadout.shadowLife||loadout.stars?.ember>=6||loadout.stars?.light>=6||loadout.stars?.stone>=6)&&globalThis.TitanCombat ? TitanCombat.create(loadout,options.loopBiome?Infinity:options.door?.width):null;
-  player={x:3.3,y:0,vy:0,dir:1,hp:Math.min(loadout.maxHp??character.hp,options.hp??loadout.maxHp??character.hp),landAge:1,airAge:0,motionTime:0,airJumps:loadout.extraJumps||0,stamina:Math.min(loadout.staminaMax,options.stamina??loadout.staminaMax),grace:0,windup:0,grounded:true,bonus:true,wave:true};
+  titan=TitanCombat.create(loadout,options.loopBiome?Infinity:options.door?.width);
+  player={max:loadout.maxHp,x:3.3,y:0,vy:0,dir:1,hp:Math.min(loadout.maxHp??character.hp,options.hp??loadout.maxHp??character.hp),landAge:1,airAge:0,motionTime:0,airJumps:loadout.extraJumps||0,stamina:Math.min(loadout.staminaMax,options.stamina??loadout.staminaMax),grace:0,windup:0,grounded:true,bonus:true,wave:true};
+  player.fieldAttack=character.fieldAttack;
+  player.rotation=[...CombatSkills.rotation(character.combatSkills),...CombatSkills.rotation(loadout.titan?.combatSkills)];
+  player.skillPower=loadout.titan?.skillPower??character.skillPower;
+  skillInterval=loadout.titan?.skillInterval??character.skillInterval??2;
+  skillClock=EchoModifiers.cadence(loadout,player.rotation[0],skillInterval);
   const positions=level.positions ? level.positions.split(/[,，]/).map(Number) : undefined;
   if(inStreet)player.x=entrance().streetStart+1.5;
   const authored=gorge()?.authored?gorge():null;
@@ -101,7 +109,8 @@ function reset(override) {
     const baseY=authored?.actors[i]?.y||0;
     const supports=baseY?authored.platforms:landscape()?.decks;
     const homeDeck=supports?.find(d=>Math.abs((d.y||0)-baseY)<.015&&x>=d.left&&x<=d.right);
-    return {...row,monsterLevel:options.monsterLevel??1,aggression,poseOffset:(i*3)%8,headHeight,homeDeck,baseY,machine,name:machine?.name||row.name,hp,speed:row.speed*(options.speedScale??1),x,depth:total>18?(i%3)*2-2:0,max:hp,aim:(2.8+(i%13)*.21)/aggression};
+    const speed=row.speed*(options.speedScale??1),echoBuild=Loadout.monster(catalog,row,hp,speed,machine);
+    return {...row,echoBuild,airJumps:echoBuild?.extraJumps,stamina:echoBuild?.staminaMax,rotation:CombatSkills.rotation(row.combatSkills),monsterLevel:options.monsterLevel??1,aggression,poseOffset:(i*3)%8,headHeight,homeDeck,baseY,machine,name:machine?.name||row.name,hp:echoBuild?.maxHp??hp,speed:echoBuild?.move??speed,x,depth:total>18?(i%3)*2-2:0,max:echoBuild?.maxHp??hp,aim:(2.8+(i%13)*.21)/aggression};
   });
   sentinels=FieldCombat.mechanisms(authored?.hazards);
   globalThis.FieldArt?.preload(enemies,sentinels);
@@ -147,7 +156,7 @@ function reset(override) {
    if(options.door?.scene==="krosos")globalThis.KrososArt?.preload();
    if(gorge())globalThis.GorgeArt?.preload();
   if(elementBoss)globalThis.ElementArt?.configure(elementBoss);
-  arrows=[]; effects=[];syncHud();updateTrial();report((loadout.titan?.name||loadout.boot?.name||"格拉拉")+" · 总负重 "+Number(loadout.weight.toFixed(2))+" · 向右移动，空格跳跃。");
+  effects=[];syncHud();updateTrial();report((loadout.mainAbility?.name||loadout.boot?.name||"格拉拉")+" · 总负重 "+Number(loadout.weight.toFixed(2))+" · 向右移动，空格跳跃。");
   byId("finish").hidden=true;byId("loot-ticker").textContent="";byId("perf").textContent="";
   const token=++session;requestAnimationFrame(t=>frame(t,token));
 }
@@ -155,10 +164,6 @@ function syncHud(){
  byId("hp").textContent=Math.ceil(player.hp)+" / "+(loadout.maxHp??character.hp);
  byId("kills").textContent=kills+" / "+total;
  options.vitals?.(player.hp,loadout.maxHp??character.hp,player.stamina,loadout.staminaMax,titan?.state.shield||0);
-}
-function spend(cost) {
- if(player.stamina+1e-7<cost)return false;
- player.stamina=Math.max(0,player.stamina-cost);return true;
 }
 // hit() is shared by direct stomps, waves and machine attacks. Combine one impact's
 // pickups before the room can settle, so a crowd does not cause one save per enemy.
@@ -171,8 +176,8 @@ function creditKills(){
   roomGrowth.hpGain+=gain.hpGain;roomGrowth.staminaGain+=gain.staminaGain;
   const oldMaxHp=loadout.maxHp;
   loadout.baseMaxHp=(loadout.baseMaxHp??oldMaxHp)+gain.hpGain;
-  loadout.maxHp=loadout.stars?.stone>=2?Math.floor(loadout.baseMaxHp*115/100):loadout.baseMaxHp;loadout.staminaMax+=gain.staminaGain;
-  player.hp=Math.min(loadout.maxHp,player.hp+(loadout.maxHp-oldMaxHp));
+  loadout.maxHp=EchoSets.maxHealth(loadout.baseMaxHp,loadout.echo);loadout.staminaMax+=gain.staminaGain;
+  player.max=loadout.maxHp;player.hp=Math.min(loadout.maxHp,player.hp+(loadout.maxHp-oldMaxHp));
   player.stamina=Math.min(loadout.staminaMax,player.stamina+gain.staminaGain);
   const x=pendingIncome.x/pendingIncome.count;
   if(gain.killGold)fx("coin",x,.4,"+"+gain.killGold,"#f7ca68",Math.min(3,pendingIncome.count));
@@ -238,13 +243,13 @@ function landingFeedback(speed,y,surface,heavy=false){
    holdMotion((heavy?3:2)/60);
  }
 }
-function burst(style,x,y,dir=1,scale=1){
+function burst(style,x,y,dir=1,scale=1,hostile=false){
  // Neighbours in the same wave share particles; a blocked or lethal blow
  // always gets its own mark. The hit location is in room coordinates.
  if(!["wound","block","core","stomp","armor"].includes(style) &&
-   effects.some(e=>e.kind==="burst"&&e.txt===style&&e.age<.045&&Math.abs(e.x-x)<.78&&Math.abs(e.y-y)<.6))return;
+   effects.some(e=>e.kind==="burst"&&e.txt===style&&e.hostile===hostile&&e.age<.045&&Math.abs(e.x-x)<.78&&Math.abs(e.y-y)<.6))return;
  const e=fx("burst",x,y,style,"",scale);
- e.dir=dir||1;e.life=style==="core"?.37:style==="burn"?.20:.27;
+ e.dir=dir||1;e.hostile=hostile;e.life=style==="core"?.37:style==="burn"?.20:.27;
 }
 function end(win){
  if(finished||!creditKills())return;finished=true;syncPause();Profile.flush();
@@ -257,57 +262,70 @@ function end(win){
  if(saveError){report(saveError);return}
  report(win?"房间已肃清 · 查看战利品。":options.onResolve?"挑战失败 · 本房战利品已失落。":options.practice?"练习结束。":"战斗失败 · 已获得的装备保留。");
 }
-function hurt(source,attack,dir=player.dir*-1,contactY){
+function hurt(source,attack,dir=player.dir*-1,contactY,power=1){
  if(player.grace>0||finished)return;
  const bodyHeight=landscape() ? .55 : .85;
  const y=Number.isFinite(contactY)?Math.max(player.y,Math.min(player.y+bodyHeight,contactY)):player.y+bodyHeight*.53;
- if(titan?.absorb()){
-   const actorScale=landscape() ? .55 : 1;
-   player.grace=.35;
-   fx("clip",player.x,player.y+15*actorScale/SCALE,"shieldBreak","",59*actorScale/SCALE);
-   burst("block",player.x,y,dir,.64);impulse(1.8,dir,.025);
-   DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");
-   if(loadout.stars?.stone>=6){
-     const damage=Math.round((JumpPhysics.preview(loadout).damage??JumpPhysics.damage(8,loadout.attack))*1.8);
-     const drops=[],previous=kills;
-     fx("wave",player.x,player.y,"","#f4ce86",3.5);
-     for(const enemy of enemies)if(enemy.hp>0 && Math.hypot(enemy.x-player.x,(enemy.baseY||0)-player.y)<=3.5)
-       hit(enemy,damage,drops,true,false,"wave");
-     announceDrops(drops);syncHud();if(kills!==previous)checkClear();
-   }
-   return
+ if(titan.state.shield){
+   const drops=[],previous=kills;
+   titan.block(player,opponents,{fx,hit:(e,n,style)=>hit(e,n,drops,true,false,style)},()=>{
+     const actorScale=landscape() ? .55 : 1;
+     player.grace=.35;
+     fx("clip",player.x,player.y+15*actorScale/SCALE,"shieldBreak","",59*actorScale/SCALE);
+     burst("block",player.x,y,dir,.64);impulse(1.8,dir,.025);
+     DropSound.contact?.("block");fx("num",player.x,player.y+1.05,"格挡","#e6c97a");
+   });
+   announceDrops(drops);syncHud();if(kills!==previous)checkClear();
+   return "blocked";
  }
- const dmg=(options.damageScale??1)*(1-(loadout.defense||0));player.hp=Math.max(0,player.hp-dmg);player.grace=1.25;syncHud();fx("num",player.x,player.y+1.05,"-"+Number(dmg.toFixed(2)),"#ff8c83");
+ const dmg=power*(options.damageScale??1)*(1-(loadout.defense||0));player.hp=Math.max(0,player.hp-dmg);player.grace=1.25;syncHud();fx("num",player.x,player.y+1.05,"-"+Number(dmg.toFixed(2)),"#ff8c83");
  player.hurtAt=clock;player.hurtDir=dir;burst("wound",player.x,y,dir);
  impulse(player.hp===0?5:3.6,dir,.042);DropSound.contact?.("wound");
  if(player.hp===0){defeatCause=[source,attack].filter(Boolean).join(" · ");end(false)}
+ return dmg>0;
 }
-function hit(enemy,value,drops,showNumber=true,breached=false,contactStyle="stomp",point){
- if(enemy.hp<=0)return;
+function hit(enemy,value,drops,showNumber=true,breached=false,contactStyle="stomp",point,stompPower=value){
+ if(finished||enemy.hp<=0)return;
+ if(enemy.skillShade){
+   if(!damageShade(enemy,point?.dir||player.dir,false))return;
+   playerSetHit(enemy,contactStyle,stompPower,drops);return true;
+ }
  if(enemy.guard?.rig&&!breached){
    if(point)burst("armor",point.x,point.y,point.dir||player.dir,.65);
    return;
  }
- if(loadout.stars){
-   const bonus=GoldStars.hitBonus(loadout,enemy,contactStyle,total-kills);
-   if(bonus)value=Math.max(1,Math.round(value*(1+bonus/100)));
-   if(loadout.stars.tide>=4 && (contactStyle==="stomp"||contactStyle==="core"))
-     player.stamina=Math.min(loadout.staminaMax,player.stamina+4);
+ if(enemy.skills?.state.shield){
+   enemy.skills.block(enemy,hostileTargets,hostileHooks(enemy,Math.sign(player.x-enemy.x)||1,CombatSkills.definitions.shield_wave.name));
+   const effect=fx("clip",enemy.x,StrikeSkills.base(enemy)+.45,"shieldBreak","",1.7);
+   effect.hostile=true;DropSound.contact?.("block");playerContact(enemy,contactStyle,stompPower,drops);return;
  }
+ const bonus=EchoSets.hitBonus(loadout,enemy,contactStyle,opponents)+EchoModifiers.hitBonus(loadout,player,enemy,contactStyle,titan.state);
+ if(bonus)value=Math.max(1,Math.round(value*(1+bonus/100)));
+ if(enemy.echoBuild?.defense)value=Math.max(1,Math.round(value*(1-enemy.echoBuild.defense)));
  if(enemy.kind==="bell")value=Math.max(1,Math.round(value*(enemy.phase==="weak"?1.7:.65)));
  if(enemy.guard?.frame&&!breached)value=Math.min(value,Math.max(1,Math.ceil(enemy.max*.08)));
  enemy.hitAt=clock;enemy.hitSide=point?.dir||(enemy.x>=player.x?1:-1);
  enemy.hp=Math.max(0,enemy.hp-value);if(showNumber)fx("num",enemy.x,enemy.guard?GuardianCombat.height(enemy,SCALE)+.25:enemy.baseY+.85,"-"+value);
  const contactX=point?.x??enemy.x;
- const contactY=point?.y??(enemy.guard?enemy.guard.lift+.85:(enemy.baseY||0)+(enemy.headHeight||JumpPhysics.headHeight)*.60);
- burst(contactStyle,contactX,contactY,point?.dir||enemy.hitSide,breached?1.25:1);
+ const contactY=point?.y??(enemy.guard?GuardianCombat.lift(enemy)+.85:(enemy.baseY||0)+(enemy.headHeight||JumpPhysics.headHeight)*.60);
+ if(!point?.effect)burst(contactStyle,contactX,contactY,point?.dir||enemy.hitSide,breached?1.25:1);
  if(contactStyle!=="stomp" && !breached && contactStyle!=="wave" && Math.abs(player.x-contactX)<10){
    if(contactStyle!=="burn")impulse(1.3,enemy.hitSide);
    DropSound.contact?.(contactStyle);
  }
- if(enemy.hp)return;
+ if(!enemy.hp)rewardKill(enemy,drops);
+ playerSetHit(enemy,contactStyle,stompPower,drops);
+ return true;
+}
+function playerContact(enemy,style,power,drops){
+ if(style==="stomp"||style==="core")titan.contact(player,enemy,power,opponents,{fx,hit:(e,n,s,point)=>hit(e,n,drops,false,false,s,point)});
+}
+function playerSetHit(enemy,style,power,drops){
+ titan.onHit(player,enemy,style,power,opponents,{fx,hit:(e,n,style,point)=>hit(e,n,drops,true,false,style,point)});
+ playerContact(enemy,style,power,drops);
+}
+function rewardKill(enemy,drops){
  kills++;
- if(loadout.stars?.shade>=4)player.hp=Math.min(loadout.maxHp,player.hp+.03*loadout.maxHp);
  if(awardKills){
    const pickup=Growth.roll(enemy);
    pendingIncome.xp+=pickup.xp;pendingIncome.gold+=pickup.gold;pendingIncome.x+=enemy.x;pendingIncome.count++;
@@ -353,8 +371,8 @@ function coreImpact(target,damage,divisor){
 }
 function contact(target,speed,point) {
  const previousKills=kills,previousTargetHP=target?.hp;
- let openedCore=false;
- const damage=Math.max(1,Math.round(JumpPhysics.damage(speed,loadout.attack)*(loadout.jumpMultiplier||1)));
+ let openedCore=false,landed=false;
+ const damage=JumpPhysics.impactDamage(speed,loadout);
  const drops=[];
  if(target){
    if(target.guard?.rig){
@@ -363,34 +381,23 @@ function contact(target,speed,point) {
        DropSound.contact?.("block");return
      }
      openedCore=true;target.guard.rig.used=true;target.guard.rig.impact=1;
-     hit(target,coreImpact(target,damage,4),drops,false,true,"core",{x:player.x,y:point.y});
+     landed=hit(target,coreImpact(target,damage,4),drops,false,true,"core",{x:player.x,y:point.y},damage);
      fx("num",point.x,point.y+.35,"肩核破击","#ffe6a2");
    }else if(target.guard?.frame&&target.phase==="weak"&&!target.guard.frame.used&&point?.part===target.guard.frame.cfg.core){
      const frame=target.guard.frame;openedCore=true;frame.used=true;frame.stagger=1;
-     hit(target,coreImpact(target,damage,5),drops,true,true,"core",{x:player.x,y:point.y});
+     landed=hit(target,coreImpact(target,damage,5),drops,true,true,"core",{x:player.x,y:point.y},damage);
      fx("num",point.x,point.y+.35,frame.cfg.site+"破击",frame.cfg.colors[2]);
    }else{
    if(target.kind==="guard"){target.swing="recover";target.swingTime=.38}
-   titan?.ignite(target,{fx});hit(target,damage,drops,true,false,"stomp",{x:player.x,y:point.y})
+    titan.castResolved("stomp",player,[target],{fx,hit:(e,n,style)=>{landed=hit(e,n,drops,true,false,style,{x:player.x,y:point.y})}},
+      {target,contact:true,power:damage});
    }
  }
- const landed=target && target.hp<previousTargetHP;
- if(landed && (loadout.stars?.ember>=6||loadout.stars?.light>=6))
-   titan.stomp(target,damage,enemies,{fx,hit:(e,value,style)=>hit(e,value,drops,true,false,style)});
- const fault=loadout.powers?.impact_ring;
- if(target&&fault){
-   fx("wave",target.x,target.baseY||0,"","#ef9e64",fault.radius);
-   for(const e of enemies)if(e!==target&&e.hp>0&&Math.hypot(e.x-target.x,e.baseY-target.baseY)<=fault.radius)hit(e,Math.max(1,Math.round(damage*fault.power)),drops,false,false,"wave");
- }
- const skill=loadout.wave, wave=skill && (!target||loadout.kind!=="earth") && player.wave && speed>=skill.threshold && spend(loadout.waveCost);
- let hits=0;
- if(wave){player.wave=false;fx("wave",player.x,target?.baseY??floorHeight,"","#ffcf76",skill.radius);
-   for(const e of enemies)if(e!==target&&e.hp>0&&Math.hypot(e.x-player.x,options.door?.authored?e.baseY-(target?.baseY??floorHeight):0)<=skill.radius){
-    hit(e,Math.round(damage*skill.power),drops,hits++<4,false,"wave");
-   }
-   if(hits>0)titan?.shield(player,{fx});
-   if(hits>4)fx("num",player.x,1.65,"×"+(hits+(target?1:0)),"#ffd47c");
- }
+ const wave=!target&&titan.main.land(player,{
+   fx,baseStomp:titan.baseStomp,hit:(e,n,style,point,index)=>hit(e,n,drops,index<4,false,style,point)
+ },speed,damage,opponents,{y:floorHeight,flat:!options.door?.authored});
+ const hits=wave?.hits??0;
+ if(hits>4)fx("num",player.x,1.65,"×"+hits,"#ffd47c");
  announceDrops(drops);
  if(kills!==previousKills)syncHud();
  if(isTrial() && !trialComplete &&
@@ -404,7 +411,7 @@ function contact(target,speed,point) {
    DropSound.impact?.(heavy);
  }
  const reportedDamage=target && (target.guard?.frame||Object.keys(loadout.stars||{}).length)?previousTargetHP-target.hp:damage;
- if(target||wave)report("下落 "+speed.toFixed(2)+" 米/秒 · 踩踏 "+(target?reportedDamage:0)+(wave?" · 震波 "+Math.round(damage*skill.power):""));
+ if(target||wave)report("下落 "+speed.toFixed(2)+" 米/秒 · 踩踏 "+(target?reportedDamage:0)+(wave?" · 震波 "+wave.power:""));
  checkClear();
  return landed;
 }
@@ -423,7 +430,7 @@ function checkClear(){
  }
 }
 function nearestHead(x,from,to){
- if(!guardianEnemy&&!landscape()&&(from<JumpPhysics.headHeight||to>JumpPhysics.headHeight))return null;
+ if(!guardianEnemy&&!landscape()&&!skillCasters.size&&(from<JumpPhysics.headHeight||to>JumpPhysics.headHeight))return null;
  let chosen=null,highest=-1,nearest=Infinity,ax,part;
  function check(enemy,cx,y,r,index){
    const distance=Math.abs(cx-x);
@@ -431,7 +438,7 @@ function nearestHead(x,from,to){
      chosen=enemy;highest=y;nearest=distance;ax=cx;part=index;
    }
  }
- for(const e of enemies){
+ for(const e of opponents()){
    if(!e.hp||Math.abs(e.x-x)>(e.guard?.rig||e.guard?.frame?5:1.65))continue;
    if(!e.guard){
      if(struckThisDescent.has(e))continue;
@@ -440,7 +447,7 @@ function nearestHead(x,from,to){
        const scale=FieldCombat.profiles[e.id].height/FieldCombat.nativeHeight[e.id];
        const side=FieldCombat.direction(e,e.x>player.x)?1:-1;
        check(e,e.x+side*crown[0]*scale,e.baseY+crown[1]*scale,.32);
-     }else check(e,e.x,e.baseY+(e.headHeight??JumpPhysics.headHeight),e.headHeight ? .32 : .47);
+     }else check(e,e.x,StrikeSkills.base(e)+(e.headHeight??JumpPhysics.headHeight),e.headHeight ? .32 : .47);
    }
    else{
      for(let i=0;i<3;i++)check(e,GuardianCombat.partX(e,i),GuardianCombat.partY(e,i,SCALE,x),GuardianCombat.partRadius(e,i),i);
@@ -458,31 +465,83 @@ function followPerch(p){
  p.y=GuardianCombat.partY(e,stand.part,SCALE,p.x);
 }
 // A guard's body is harmless. Only the outward blade is live, after its wind-up.
-function guardTurn(e,dt,p,decoy,dx){
- const target=decoy||p;
- const move=FieldCombat.profile(e.id,e.kind);
- const reach=e.headHeight?(move.fullReach??move.reach):move.reach;
- e.swingTime=(e.swingTime||0)-dt;
- if(e.swing==="tell"){
-   if(e.swingTime<=0){
-     e.swing="cut";e.swingTime=move.active;e.cutHit=false;
-     if(Math.abs(e.x-p.x)<4){
-       DropSound.contact?.("swing");
-       if(e.id==="forgeguard"||e.id==="trial_guard")impulse(1.15,e.swingDir);
-     }
-   }
- }else if(e.swing==="cut"){
-   const d=(target.x-e.x)*e.swingDir;
-   if(!e.cutHit&&d>=-.14&&d<=reach&&target.y<e.baseY+.50&&target.y+.55>e.baseY){
-     e.cutHit=true;if(decoy)damageShade(decoy,e.swingDir);else hurt(e.name,move.attack,e.swingDir);
-   }
-   if(e.swingTime<=0){e.swing="recover";e.swingTime=move.recover/e.aggression}
- }else{
-   if(Math.abs(dx)>.38)e.x+=Math.sign(dx)*e.speed*dt;
-   if(e.swingTime<=0&&Math.abs(dx)<reach&&target.y<e.baseY+1&&target.y+.55>e.baseY){
-     e.swing="tell";e.swingDir=Math.sign(dx)||1;e.swingTime=move.windup;
-   }
+function opponents(){
+ let targets=enemies;
+ for(const caster of skillCasters)for(const shade of caster.skills.state.shades){
+   if(shade.hp<=0)continue;
+   if(targets===enemies)targets=enemies.slice();
+   targets.push(shade);
  }
+ return targets;
+}
+function hostileTargets(){return [player,...titan.state.shades.filter(s=>s.hp>0)]}
+function hostileHit(e,target,power,style,dir,point,label){
+ const b=e.echoBuild;
+ const bonus=b?EchoSets.hitBonus(b,target,style,hostileTargets)+EchoModifiers.hitBonus(b,e,target,style,e.skills?.state):0;
+ const damage=power*(1+bonus/100);
+ const result=target===player?hurt(e.name,label||CombatSkills.definitions[style]?.name||style,dir,point?.y,damage):damageShade(target,dir);
+ if(!b||e.hp<=0||!result)return;
+ const h=hostileHooks(e,dir);
+ if(style==="stomp"||style==="core")e.skills.contact(e,target,power,hostileTargets,h);
+ if(result==="blocked")return;
+ e.skills.onHit(e,target,style,power,hostileTargets,h);
+ if(style==="stomp"||style==="core"){
+   if(e.skills.main.rebound(e,h,true,true,e.bonus!==false,Infinity))e.bonus=false;
+ }
+}
+function hostileHooks(e,dir,label){
+ const hooks={dir,
+   canShoot:canFireHostile,roomWidth:options.door?.width??W/SCALE,
+   player,playerHeight:landscape() ? .55 : .8,shades:titan.state.shades,
+   platforms:roomPlatforms,solids:options.door?.authored?roomPlatforms:null,
+   fx:(...args)=>Object.assign(fx(...args),{hostile:true,dir}),
+   onJump:()=>e.skills?.jump(e,hooks),
+   onLand:(speed=8,y=StrikeSkills.base(e))=>e.skills?.main?.land(e,hooks,speed,undefined,hostileTargets,{y}),
+   hit:(target,power,style,point)=>{
+     const facing=point?.dir||Math.sign(target.x-e.x)||dir;
+     if(["blade","slash","shadow","burn","stomp"].includes(style)){
+       burst(style,point?.x??target.x,point?.y??StrikeSkills.base(target)+.35,facing,1,true);
+     }
+     hostileHit(e,target,power,style,facing,point,point?.attack||label);
+   }
+ };
+ return hooks;
+}
+function canFireHostile(){
+ let count=0;
+ for(const caster of skillCasters)count+=caster.skills.state.bolts.length;
+ return count<CombatSkills.projectileLimit;
+}
+function enemySkills(e){
+ if(!e.skills){
+   e.skills=CombatSkills.create(options.loopBiome?Infinity:options.door?.width,true,e.echoBuild);
+   skillCasters.add(e);
+ }
+ return e.skills;
+}
+function enemyCast(e,target,dir,params={},id){
+ return enemySkills(e).castConfigured(e,hostileTargets(),hostileHooks(e,dir,id?CombatSkills.definitions[id].name:undefined),{target,dir,...params},id);
+}
+function fieldEnemyTurn(e,dt,target,terrain){
+ const move=FieldCombat.attackProfile(e);
+ FieldCombat.configuredAttack(e,dt,target,{
+   build:e.echoBuild,compact:!e.headHeight,
+   range:!e.fieldAttack&&e.kind==="bow"&&!terrain?Infinity:move.reach,
+   skills:()=>enemySkills(e),targets:hostileTargets,
+   hooks:(dir,id)=>hostileHooks(e,dir,id?CombatSkills.definitions[id].name:undefined),
+   approach:(distance,dx)=>{if(e.speed&&Math.abs(dx)>distance)e.x+=Math.sign(dx)*e.speed*dt},
+   onRelease:(id,dir,args)=>e.skills.main?.bowRelease(id,e,hostileTargets,hostileHooks(e,dir),args),
+   onSwing:dir=>{
+     if(Math.abs(e.x-player.x)>=4)return;
+     DropSound.contact?.("swing");
+     if(move.swingImpulse)impulse(move.swingImpulse,dir);
+   }
+ });
+}
+function nearestOpponent(targets){
+ let nearest;
+ for(const e of targets)if(e.hp>0&&(!nearest||Math.abs(e.x-player.x)<Math.abs(nearest.x-player.x)))nearest=e;
+ return nearest;
 }
 function extendTour(x){
  const d=landscape(),water=options.loopBiome==="water",canyon=!!gorge();
@@ -497,7 +556,8 @@ function extendTour(x){
  roomPlatforms=d.platforms;
  if(water||canyon){
    d.decks=d.decks.filter(p=>p.right>=keepFrom).concat(tourTile.decks.map(shiftSpan));
-   for(const e of enemies.filter(e=>e.x<keepFrom)){total--;if(!e.hp)kills--}
+   for(const e of enemies.filter(e=>e.x<keepFrom)){total--;if(!e.hp)kills--;e.hp=0}
+   for(const caster of skillCasters)if(caster.x<keepFrom){caster.skills.clear();skillCasters.delete(caster)}
    enemies=enemies.filter(e=>e.x>=keepFrom);
    for(const e of tourTile.foes){
      enemies.push({...e,x:e.x+shift,homeDeck:e.homeDeck&&shiftSpan(e.homeDeck)});
@@ -552,17 +612,20 @@ function tick(dt){
    if(support){mooring.x=Math.min(support.right-.36,Math.max(support.left+.36,p.x));mooring.y=floorHeight}
    else if(!p.perch){p.grounded=false;p.windup=0;p.vy=0}
  }
- if(buffer>0&&!p.grounded && p.airJumps>0){buffer=0;if(spend(b.reboundCost)){p.airJumps--;p.vy=b.launch*.9;p.airAge=0;takeoffFeedback("air")}}
+ if(buffer>0&&!p.grounded&&p.airJumps>0){
+   buffer=0;
+   if(titan.cast("air_step",p,[],{fx,baseStomp:titan.baseStomp},{speed:b.launch*.9,silent:true}))takeoffFeedback("air");
+ }
  if(buffer>0&&p.grounded&&p.windup===0){
    buffer=0;
-   if(spend(b.jumpCost)){p.windup=b.windupTicks;fallDrops=[];jumpStartKills=kills}
+   if(MainAbilities.spend(p,b.jumpCost)){p.windup=b.windupTicks;fallDrops=[];jumpStartKills=kills}
    else report("体力不足 · 稍候再跳。");
  }
  if(p.windup>0 && --p.windup===0){
    takeoffFeedback(p.perch?"armor":"surface");
    p.perch=null;p.vy=b.launch;p.grounded=false;p.airAge=0;titan?.jump(p,{fx});
  }
- if(!p.grounded){
+ if(!p.grounded&&!titan.state.dive){
   const oldY=p.y;
   // A renewed ascent (air jump or rebound) starts a fresh descent measurement.
   p.fallPeakY=p.vy>=0 ? oldY : Math.max(p.fallPeakY,oldY);
@@ -574,15 +637,12 @@ function tick(dt){
    const landed=contact(target,-p.vy,point);p.y=point.y;
    p.fallPeakY=point.y;
    const freshPart=target.guard && (p.chainBoss!==target||!(p.chainMask&(1<<point.part)));
-   const freeBounce=landed && b.stars?.wind>=6;
-   if((keys.has("jump")||buffer>0) && (freeBounce || (b.rebound&&-p.vy>=b.rebound.threshold&&(p.bonus||freshPart)&&spend(b.reboundCost)))){
-     if(freeBounce){
-       p.airJumps=Math.min(b.extraJumps,p.airJumps+1);
-       fx("clip",p.x,point.y,"airStep","",1.8);
-     }
+   const wantsBounce=keys.has("jump")||buffer>0;
+   const bounce=titan.main.rebound(p,{fx,silent:true},wantsBounce,landed,p.bonus||freshPart,-p.vy);
+   if(bounce){
      if(target.guard){if(p.chainBoss!==target)p.chainMask=0;p.chainBoss=target;p.chainMask|=1<<point.part}
-     p.vy=freeBounce?b.launch:b.rebound.power;p.airAge=0;p.bonus=false;buffer=0;fallDrops=[];reboundFromFront=target.id===level.front;
-     fx("num",p.x,point.y+.38,freeBounce?"踏风":target.guard?"借风":"UP","#a8e1de")
+     p.bonus=false;buffer=0;fallDrops=[];reboundFromFront=target.id===level.front;
+     fx("num",p.x,point.y+.38,bounce==="free"?"踏风":target.guard?"借风":"UP","#a8e1de")
    }else if(target.guard&&target.hp>0){
      p.grounded=true;p.vy=0;p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.bonus=true;p.wave=true;
      p.chainBoss=null;p.chainMask=0;floorHeight=0;p.perch={enemy:target,part:point.part,cx:point.x};
@@ -590,9 +650,10 @@ function tick(dt){
    else{p.y=point.y-.001}
   }
   if((landing&&(!target||landing.y>point.y)) || (p.y<=0&&dryDeck(p.x))){
-    if(b.stars?.stone>=6)titan.shield(p,{fx});
     if(-p.vy>2.4)landingFeedback(-p.vy,landing?.y||0,"ground");
-    floorHeight=landing?.y||0;if(!floorHeight || b.kind==="earth")contact(null,-p.vy);p.landAge=0;p.airJumps=b.extraJumps||0;
+    floorHeight=landing?.y||0;
+    if(!floorHeight||b.wave)contact(null,-p.vy);else titan.land(p,{fx});
+    p.landAge=0;
     p.y=floorHeight;p.vy=0;p.grounded=true;p.bonus=true;p.wave=true;p.perch=null;p.chainBoss=null;p.chainMask=0;reboundFromFront=false;
   }
  }
@@ -604,11 +665,33 @@ function tick(dt){
  }
  buffer=Math.max(0,buffer-dt);
  if(finished)return;
- if(titan){const drops=[],previous=kills;titan.tick(dt,p,enemies,{fx,platforms,hit:(e,value,style,point)=>hit(e,Math.max(1,Math.round(value)),drops,true,false,style,point)});if(drops.length){const saved=fallDrops;fallDrops=[];announceDrops(drops);fallDrops=saved}if(kills!==previous){syncHud();checkClear();if(finished)return}}
+ const solids=terrain?.authored?roomPlatforms:null;
+ const drops=[],previous=kills,targets=opponents();
+ const hooks={fx,baseStomp:titan.baseStomp,onJump:()=>titan.jump(p,{fx}),
+   onLand:(speed=8,y=p.y)=>titan.main.land(p,hooks,speed,undefined,opponents,{y,flat:!terrain?.authored}),platforms,solids,roomWidth,maxHp:loadout.maxHp,extraJumps:b.extraJumps,hit:(e,n,style,point)=>hit(e,Math.max(1,Math.round(n)),drops,true,false,style,point)};
+ if(p.fieldAttack){
+   FieldCombat.configuredAttack(p,dt,nearestOpponent(targets),{
+     compact:true,build:b,skills:()=>titan,targets:()=>targets,hooks:()=>hooks
+   });
+ }else if(p.rotation.length){
+   skillClock-=dt;
+   if(skillClock<=1e-7){
+     const nearest=nearestOpponent(targets);
+     if(nearest){
+       const id=titan.peek(p.rotation);
+       const released=titan.castConfigured(p,targets,hooks,{target:nearest});
+       if(released!==false)skillClock=EchoModifiers.cadence(b,id,skillInterval);
+     }
+   }
+ }
+ titan.tick(dt,p,targets,hooks);
+ if(drops.length){const saved=fallDrops;fallDrops=[];announceDrops(drops);fallDrops=saved}
+ if(kills!==previous){syncHud();checkClear();if(finished)return}
  if(canal&&!inStreet&&options.loopBiome!=="water"&&exitReady&&Math.abs(p.x-canal.waterGate.x)<.46&&Math.abs(p.y-canal.waterGate.y)<.48){
    inStreet=true;floorHeight=0;buffer=0;p.x=canal.streetStart+1.5;p.y=0;p.vy=0;p.grounded=true;p.windup=0;
-   p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.perch=null;effects=[];arrows=[];
-   titan?.clearProjectilesAndSummons();
+   p.airAge=0;p.landAge=0;p.airJumps=b.extraJumps||0;p.perch=null;effects=[];
+   titan.clearProjectilesAndSummons();
+   for(const caster of skillCasters)caster.skills.clear();
    byId("adventure-status").textContent=options.loopBiome?"克罗索斯街道 · 沿街漫游":"克罗索斯街道 · 沿拱廊前往旧钟楼。";return;
  }
  if(exitReady && !options.loopBiome && (!canal||inStreet) && Math.abs(p.x-options.door.x)<.46 && Math.abs(p.y-options.door.y)<.48){
@@ -622,48 +705,51 @@ function tick(dt){
      if(Math.abs(dx)>(e.guard?11.4:5.8)){if(e.guard?.frame)ElementFrame.pose(e,dt);continue;}
      e.engaged=true;
    }
-   if(e.kind==="guard"){guardTurn(e,dt,p,decoy,dx)}
-  else if(e.guard){GuardianCombat.step(e,dt,p,decoy,roomWidth,hurt,damageShade,weaponImpulse)}
+   if(e.echoBuild){
+     const b=e.echoBuild,skills=enemySkills(e),dir=Math.sign(dx)||1;
+     e.stamina=Math.min(b.staminaMax,e.stamina+b.regen*dt);
+     if(b.shotPeriod||b.slashPeriod)skills.main.tick(dt,e,hostileTargets(),hostileHooks(e,dir),!!FieldCombat.attackProfile(e).draw&&e.kind!=="bell");
+   }
+   if(e.kind==="guard"||e.kind==="bow")fieldEnemyTurn(e,dt,decoy||p,terrain);
+  else if(e.guard){
+    const dir=Math.sign(dx)||1;
+    GuardianCombat.step(e,dt,p,decoy,roomWidth,
+      (_,label,d,y,power,style)=>hostileHit(e,p,power,style||"strike",d,{y},label),
+      (s,style,power)=>hostileHit(e,s,power,style||"strike",dir),weaponImpulse,enemyCast,
+      e.echoBuild?hostileHooks(e,dir):undefined);
+  }
   else if(e.kind==="bell"){
     e.phaseTime-=dt;
     if(e.phaseTime<=0){
-      if(e.phase==="armored"){e.phase="warning";e.phaseTime=e.warning??.9}
+      if(e.phase==="armored"){e.phase="warning";e.phaseTime=EchoModifiers.jumpDelay(e.echoBuild,e.skills?.peek(e.rotation)??e.rotation[0],e.warning??.9)}
       else if(e.phase==="warning"){
-        fx("wave",e.x,0,"","#e17965",3).hostile=true;
+        if(e.rotation.length){e.releasedSkill=e.skills?.peek(e.rotation)??e.rotation[0];enemyCast(e,decoy||p,Math.sign(dx)||1)}
+        else {
+          const victims=decoy?[p,decoy]:[p];
+          enemySkills(e).cast("bell_wave",e,victims,hostileHooks(e,Math.sign(dx)||1,"震击"),{
+            power:e.skillPower??1,color:"#e17965"});
+        }
        if(Math.abs(p.x-e.x)<8)impulse(2,Math.sign(p.x-e.x));
-       if(Math.abs(p.x-e.x)<3 && p.y<.35)hurt(e.name,"震击",Math.sign(p.x-e.x)||1);if(decoy&&Math.abs(dx)<3 && decoy.y<.35)damageShade(decoy,Math.sign(dx));
         e.phase="weak";e.phaseTime=e.weakTime??1.3;
-      }else{e.phase="armored";e.phaseTime=(e.period??2.8)/e.aggression}
+      }else{e.phase="armored";e.phaseTime=EchoModifiers.cadence(e.echoBuild,e.releasedSkill,(e.period??2.8)/e.aggression)}
     }
     if(e.phase==="armored" && Math.abs(dx)>1)e.x+=Math.sign(dx)*e.speed*dt;
-  }
-  else{
-    if(e.speed && Math.abs(dx)>4)e.x+=Math.sign(dx)*e.speed*dt;
-    FieldCombat.ranged(e,dt,dx,e.baseY,!e.headHeight,terrain?FieldCombat.profiles.archer.reach:Infinity,arrows);
   }
   if(e.homeDeck)e.x=Math.max(e.homeDeck.left+.4,Math.min(e.homeDeck.right-.4,e.x));
   e.vx=(e.x-startX)/dt;
   if(e.kind==="guard")e.walkDistance=(e.walkDistance||0)+Math.abs(e.x-startX);
  }
  followPerch(p);
- for(const s of sentinels)FieldCombat.ranged(s,dt,p.x-s.x,s.baseY,false,FieldCombat.profiles.watcher.reach,arrows);
- for(const a of arrows){
-   const previous=a.x;a.age+=dt;a.x+=a.dir*a.speed*dt;
-   if(terrain?.authored&&roomPlatforms.some(s=>(s.art==="rock"||s.art==="plinth")&&s.y>=a.y&&Math.max(previous,a.x)>=s.left&&Math.min(previous,a.x)<=s.right)){
-     a.used=true;fx("projectileHit",a.x,a.y,a.ink,"",1);continue;
-   }
-   const shade=titan?.state.shades.find(s=>s.hp>0&&Math.abs(s.x-a.x)<.28&&s.y<a.y&&s.y+.8>a.y);
-   if(shade){damageShade(shade,a.dir);a.used=true;continue}
-   if(Math.abs(a.x-p.x)<.25&&p.y<a.y&&p.y+(terrain ? .55 : .8)>a.y){
-     hurt(a.source,a.attack,a.dir,a.y);a.used=true;fx("projectileHit",a.x,a.y,a.ink,"",1);
-   }
+ for(const s of sentinels)fieldEnemyTurn(s,dt,p,terrain);
+ for(const caster of skillCasters){
+   const facing=caster.swingDir||caster.shotDir||caster.guard?.dir||1;
+   const h=hostileHooks(caster,facing);
+   h.tickMain=false; // The AI advances main abilities only while the wearer is engaged.
+   caster.skills.tick(dt,caster,[p,...h.shades],h);
  }
- if(arrows.length)arrows=arrows.filter(a=>!a.used&&a.x>0&&a.x<roomWidth);
 }
-function damageShade(shade,dir){
- const before=shade.hp;
- titan?.hurtShade(shade);
- if(shade.hp<before)burst("shadow",shade.x,shade.y+.4,dir||1,.72);
+function damageShade(shade,dir,hostile=true){
+ if(ShadowSkill.hurt(shade)){burst("shadow",shade.x,shade.y+.4,dir||1,.72,hostile);return true}
 }
 function weaponImpulse(x,power,dir){
  const strength=power*Math.max(0,1-Math.abs(player.x-x)/20);
@@ -743,6 +829,8 @@ function frame(now,token){
      guardian.style.setProperty?.("--guardian-vital",(100*boss.hp/boss.max)+"%");
    }
  }
+ const arrows=[];
+ for(const caster of skillCasters)arrows.push(...caster.skills.state.bolts);
  BattleView.draw({clock,cameraKick,sentinels,pose:motionPose(player,loadout),titan:titan?.state,build:loadout,enemies,total,player,character,keys,started,arrows,effects,finished,kills,aim,door:options.door,exitReady,observatory,elementBoss,roomPlatforms});
  if(finished && options.routeNumber && player.hp===0 && clock-player.hurtAt>=.12){settle();return}
  if(elapsed>0){renderFrames++;renderTime+=elapsed}
@@ -781,7 +869,7 @@ function open(data,ch,stage,done,settings={}){
  }
  reset();screenCanvas.focus();
 }
-function stop(){active=false;session++;keys.clear();Profile.flush();}
+function stop(){skillCasters.clear();active=false;session++;keys.clear();Profile.flush();}
 return {open,stop,settle,campaignCheckpoint,
  lockPanel(){const resume=active && !paused && !finished;panelLocked=true;setPaused(true);return resume},
  closePanel(resume){panelLocked=false;if(resume)setPaused(false);else if(active&&paused)byId("resume").focus()},

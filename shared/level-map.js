@@ -48,6 +48,10 @@ globalThis.LevelMap = (() => {
     if(!Array.isArray(m.objects)||m.objects.length>1000)fail("单张地图最多可放置 1000 个元件。");
     for(const o of m.objects){
       if(!o||!Object.hasOwn(palette,o.type)||!Number.isFinite(o.x)||!Number.isFinite(o.y)||o.x<0||o.x>m.width||o.y<0||o.y>8)fail("元件种类或位置超出地图范围。");
+      if(o.type==="watcher"){
+        if(o.attackSkill!==undefined&&!CombatSkills.ids.includes(o.attackSkill))fail("机关攻击效果无效。");
+        if(o.skillPower!==undefined&&(!Number.isFinite(o.skillPower)||o.skillPower<.01||o.skillPower>1000))fail("机关伤害须在 0.01 至 1000 之间。");
+      }
       if(o.skin&&(!ids.has(o.skin)||roles[ids.get(o.skin).role]!==o.type))fail("元件引用的素材或碰撞类型无效。");
       if(terrain(o)&&(!Number.isFinite(o.w)||o.w<.5||o.x+o.w>m.width+.001))fail("地形宽度至少为 0.5 米，右端须在地图内。");
     }

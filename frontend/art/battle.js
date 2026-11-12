@@ -1,6 +1,6 @@
 "use strict";
 const screenCanvas=document.querySelector("#scene"),ctx=screenCanvas.getContext("2d");
-const W=576,H=196,FLOOR=165,SCALE=29;
+const W=576,H=196,FLOOR=165,SCALE=FieldCombat.pixelsPerMetre;
 let seed=418;
 function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
 function box(c,x,y,w,h,color){c.fillStyle=color;c.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h))}

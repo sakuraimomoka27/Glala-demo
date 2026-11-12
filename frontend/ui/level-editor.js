@@ -95,6 +95,14 @@
       const xy=document.createElement("div");xy.className="pair";
       xy.append(editNumber("横坐标 / 米",o.x,v=>o.x=round(clamp(v,0,map.width-(o.w||0)))),
         editNumber("高度 / 米",o.y,v=>o.y=round(clamp(v,0,8))));props.append(xy);
+      if(o.type==="watcher"){
+        const label=document.createElement("label"),select=document.createElement("select");
+        label.textContent="机关攻击效果";
+        for(const id of CombatSkills.ids)select.add(new Option(CombatSkills.definitions[id].name+" · "+id,id));
+        select.value=o.attackSkill??FieldCombat.profiles.watcher.skill;
+        select.onchange=()=>{const before=snapshot();o.attackSkill=select.value;history(before);sync()};
+        label.append(select);props.append(label,editNumber("技能基础伤害",o.skillPower??1,v=>o.skillPower=clamp(v,.01,1000)));
+      }
       if(LevelMap.terrain(o))props.append(editNumber("落脚面宽 / 米",o.w,v=>o.w=round(clamp(v,.5,map.width-o.x))));
       if(LevelMap.terrain(o)){const note=document.createElement("p");note.textContent=["rock","plinth"].includes(o.type)?"实体地形 · 崖壁阻挡横移":"单向平台 · 可从下方向上跳穿";props.append(note)}
       for(const [text,fn] of [["复制",duplicate],["删除",remove]]){

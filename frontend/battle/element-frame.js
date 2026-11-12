@@ -4,15 +4,15 @@ globalThis.ElementFrame=(()=>{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
   const configs={
     prometheus:{scale:1.09,wing:59,blade:61,core:1,site:"炉腕",colors:["#6a2837","#ed5934","#ffae45","#fff1a4"],
-      special:["熔炉爆破弹","离开橙色炉印","mortar"],prep:[.30,-.46,.64,-.78,.18],strike:[-.13,1.28,1.63,-.24,-.30]},
+      special:SkillPatterns.signatures.prometheus_mortar,prep:[.30,-.46,.64,-.78,.18],strike:[-.13,1.28,1.63,-.24,-.30]},
     dione:{scale:1.04,wing:68,blade:75,core:2,site:"潮汐肩核",colors:["#25466e","#368fca","#8ce9fa","#eeffff"],
-      special:["潮汐折光","跃离潮刃的蓝色瞄线","rail"],prep:[-.15,.85,.35,1.08,-.34],strike:[.16,1.23,1.71,-.22,.27]},
+      special:SkillPatterns.signatures.dione_rail,prep:[-.15,.85,.35,1.08,-.34],strike:[.16,1.23,1.71,-.22,.27]},
     mnemosyne:{scale:1,wing:77,blade:59,core:2,site:"风翼根部",colors:["#285748","#55b779","#b6f587","#f1ffcf"],
-      special:["叶刃追风弹","移出双翼锁定的风眼","missile"],prep:[.30,-.44,.86,.32,.57],strike:[-.27,1.52,1.96,.18,-.38]},
+      special:SkillPatterns.signatures.mnemosyne_missile,prep:[.30,-.44,.86,.32,.57],strike:[-.27,1.52,1.96,.18,-.38]},
     cronus:{scale:1.13,wing:63,blade:83,core:1,site:"执剑腕甲",colors:["#79502e","#e2a640","#ffe398","#fffee0"],
-      special:["日冕贯光","避开金色剑线","rail"],prep:[-.24,1.72,2.45,1.28,-.40],strike:[.24,1.35,1.36,-.72,.32]},
+      special:SkillPatterns.signatures.cronus_rail,prep:[-.24,1.72,2.45,1.28,-.40],strike:[.24,1.35,1.36,-.72,.32]},
     hecate:{scale:1.02,wing:45,blade:58,core:2,site:"蚀相肩核",colors:["#343458","#7967cf","#88c8ff","#dbfff9"],
-      special:["蚀月游魂","离开幽蓝月印","missile"],prep:[.19,-.13,1.4,.82,-.66],strike:[-.15,.71,1.87,-.52,.53]}
+      special:SkillPatterns.signatures.hecate_missile,prep:[.19,-.13,1.4,.82,-.66],strike:[-.15,.71,1.87,-.52,.53]}
   };
   const supported=e=>configs[e.machine?.id]&&e.machine.ability===e.guard?.key;
   // Project the two sides of the chassis separately. Distances are in the same
@@ -56,7 +56,7 @@ globalThis.ElementFrame=(()=>{
     const travel=e.x-f.lastX;f.lastX=e.x;f.walk+=Math.abs(travel)*5;
     const tracking=e.phase==="armored"&&Math.abs(travel)>.0001;
     f.stride=lerp(f.stride||0,tracking?1:0,1-Math.exp(-8*dt));
-    const phase=e.phase,id=g.move?.[2],attack=phase==="attack",warning=phase==="warning";
+    const phase=e.phase,id=SkillPatterns.weaponType(g.move?.[2])??g.move?.[2],attack=phase==="attack",warning=phase==="warning";
     const windup=warning?Math.min(1,g.age/Math.max(.32,g.warning*.65)):attack?1:0;
     f.cast=lerp(f.cast,windup,1-Math.exp(-10*dt));
     const u=attack?g.age/Math.max(.01,g.activeFor):0;
@@ -96,7 +96,7 @@ globalThis.ElementFrame=(()=>{
     let weapon=lerp(-.76+.06*breath,channels[3],q);
     if(id==="rail"&&(attack||warning)){
       const target=g.zones[0],k=SCALE/f.scale;
-      const dx=(target.targetX-e.x)*k*(-g.dir)-hand.x,dy=(g.lift-target.targetY)*k-hand.y;
+      const dx=(target.targetX-e.x)*k*(-g.dir)-hand.x,dy=(GuardianCombat.lift(e)-target.targetY)*k-hand.y;
       const delta=Math.atan2(-dy,-dx)-weapon;
       weapon+=Math.atan2(Math.sin(delta),Math.cos(delta))*q;
     }
@@ -105,9 +105,9 @@ globalThis.ElementFrame=(()=>{
     const outlet=wingTip[e.machine.id]||[.68,-.53],plume=add(wing,c.wing*outlet[0],c.wing*outlet[1],wingAngle);
     f.pose={hip,pelvisAngle,tilt,farLeg,nearLeg,shoulder,rear,elbow,hand,upper,fore,rearUpper,rearFore,farElbow,farHand,
       neck,headAngle:tilt+.065*Math.sin(f.time*1.25)-.12*q,wing,wingAngle,farWing,farWingAngle,weapon,tip,plume,
-      decks:[add(nearLeg.knee,1,-2),add(hand,0,-5),add(c.special[2]==="missile"?wing:shoulder,0,-7)]};
+      decks:[add(nearLeg.knee,1,-2),add(hand,0,-5),add(SkillPatterns.weaponType(c.special[2])==="missile"?wing:shoulder,0,-7)]};
   }
-  function world(e,p){const f=e.guard.frame,k=f.scale/SCALE;return {x:e.x-e.guard.dir*p.x*k,y:e.guard.lift-p.y*k}}
+  function world(e,p){const f=e.guard.frame,k=f.scale/SCALE;return {x:e.x-e.guard.dir*p.x*k,y:GuardianCombat.lift(e)-p.y*k}}
   function deck(e,i){return world(e,e.guard.frame.pose.decks[i])}
   function radius(e,i){return [22,17,16][i]*e.guard.frame.scale/SCALE}
   function port(e,z){
@@ -116,32 +116,16 @@ globalThis.ElementFrame=(()=>{
     v.angle=z.type==="missile"?-e.guard.dir*(.43+p.wingAngle):e.guard.dir<0?p.weapon:Math.PI-p.weapon;
     return v;
   }
-  function plan(e,target,edge){
-    const f=e.guard.frame,type=f.cfg.special[2];
-    const offsets=type==="rail"?[0]:type==="mortar"?[0,-2.15]:[-1.1,1.1,0];
-    return offsets.map((offset,i)=>{
-      const x=clamp(target.x+offset,.65,edge-.65);
-      const ledge=f.platforms?.find(p=>x>=p.left&&x<=p.right&&p.y<=target.y+.5);
-      let y=ledge?.y??0;
-      if(target.perch?.enemy===e&&Math.abs(x-deck(e,target.perch.part).x)<radius(e,target.perch.part))y=deck(e,target.perch.part).y;
-      const flight=type==="rail"?0:1.0+i*.10;
-      return {type,weapon:true,index:i,targetX:x,targetY:type==="rail"?target.y+.34:y,edge,
-        at:i*.28,flight,dur:flight+(type==="rail"?.36:.48),blastRadius:type==="mortar"?.88:.62};
-    });
+  function sockets(e){
+    const f=e.guard.frame;
+    return {layout:"element",bodyMargin:4.1,platforms:f.platforms,port:z=>port(e,z),
+      deckHeight:(x,target)=>{
+        const perch=target.perch;
+        if(perch?.enemy===e&&Math.abs(x-deck(e,perch.part).x)<radius(e,perch.part))return deck(e,perch.part).y;
+      },
+      tip:()=>world(e,f.pose.tip),recoil:()=>{f.stagger=.46}
+    };
   }
-  function path(e,z){
-    const {x:ax,y:ay,angle}=port(e,z),bx=z.targetX,by=z.targetY;
-    if(z.type==="rail"){
-      const dx=bx-ax,dy=by-ay,d=Math.hypot(dx,dy)||1;
-      const reach=Math.max(.01,Math.min(dx<0?-ax*d/dx:dx>0?(z.edge-ax)*d/dx:99,dy<0?-ay*d/dy:99,24));
-      return {ax,ay,bx:ax+reach*dx/d,by:ay+reach*dy/d};
-    }
-    if(z.type==="mortar"){
-      const lead=clamp(Math.abs(bx-ax)*.48,1,3.5);
-      return {ax,ay,bx,by,cx:ax-Math.cos(angle)*lead,cy:ay+Math.sin(angle)*lead};
-    }
-    return {ax,ay,bx,by,cx:ax+Math.sin(angle)*2,cy:ay+2.1,dx:bx+1.3*(z.index-1),dy:Math.max(ay+2,by+3)};
-  }
-  function fire(e,z){z.path=path(e,z);e.guard.frame.stagger=.46;globalThis.DropSound?.ordnance?.(z.type)}
-  return {supported,mount,pose,deck,radius,port,plan,path,fire,world};
+  function path(e,z){return Ordnance.path(z,port(e,z))}
+  return {supported,mount,pose,deck,radius,port,sockets,path,world};
 })();

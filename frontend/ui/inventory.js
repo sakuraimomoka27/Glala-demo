@@ -1,7 +1,7 @@
 // One screen owns all preview state; a preview never changes the saved formation.
 globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,entry="disc"){
   const {el,button}=UI, profile=Profile;
-  let hero=profile.hero,bag=profile.bag,equippedStars={};
+  let hero=profile.hero,bag=profile.bag,equippedSets;
   Echoes.initialize(profile,catalog);
   const role=catalog.characters.find(c=>c.id===characterId)||catalog.characters.find(c=>c.id==="glala"),coords=[[2,2],[4,2],[2,4],[4,4],[1,1],[5,1],[1,3],[5,3],[1,5],[5,5]];
   const pageSize=40,filters={quality:"",series:"",stat:"",state:"",sort:"recent"};
@@ -33,15 +33,22 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     const powerMetrics=[];
     if(build.bladeDamage)powerMetrics.push("bladeDamage");
     if(build.extraJumps)powerMetrics.push("extraJumps");
-    if(build.stars.tide>=6)powerMetrics.push(...byKind.shot);
-    if(build.stars.shade>=6)powerMetrics.push(...byKind.shadow);
+    if(build.echo.volley)powerMetrics.push(...byKind.shot);
+    if(build.echo.shadowAttackRatio)powerMetrics.push(...byKind.shadow);
     return {kind:build.kind||"",values,burnChance,powerMetrics,stars:build.stars};
   }
-  const applies=(line,s,item)=>TitanBuild.supports(line.stat,s?.ability||"") ||
-    (TitanBuild.domains.shot.includes(line.stat)&&equippedStars.tide>=6) ||
-    (TitanBuild.domains.shadow.includes(line.stat)&&equippedStars.shade>=6) ||
-    (["shotDamage","shotSize"].includes(line.stat) && (item?.power?.kind==="return_blade" ||
-      bag.items.some(i=>i.power?.kind==="return_blade"&&hero.disc.includes(i.uid))));
+  function equippedEffects(main){
+    return EchoModifiers.resolve(catalog,bag.items.filter(it=>hero.disc.includes(it.uid)),main,role,main);
+  }
+  function applies(line,s,item,effects=equippedSets){
+    if(EchoModifiers.supports(line.stat,MainAbilities.source(catalog,role,s)?.ability))return true;
+    const skills=[role.combatSkills,s?.combatSkills].filter(Boolean).join(",").split(/[,，]/).map(id=>id.trim());
+    if(effects.echo.volley)skills.push("shot");
+    if(effects.echo.shadowAttackRatio)skills.push("shadow");
+    if(effects.echo.shieldRatio)skills.push("shield_wave");
+    for(const kind of ["return_blade","impact_ring","kill_wave"])if(item?.power?.kind===kind||effects.powers[kind])skills.push(kind);
+    return skills.some(id=>EchoModifiers.applies(line.stat,id));
+  }
   const valueText=(line,value)=>UI.statValue(line.stat,value);
   const icon=(item,format)=>{const c=el("canvas");EchoIcon.draw(c,item,format);c.setAttribute("aria-hidden","true");return c};
   const art=s=>{const c=el("canvas");SummonArt.draw(c,s);c.setAttribute("aria-hidden","true");return c};
@@ -85,12 +92,12 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     return box;
   }
   function action(fn,msg){let ok=false;try{fn();note=msg||"";ok=true}catch(e){note=e.message}draw();return ok}
-  function reviewSalvage(items){
+  function reviewSalvage(item){
     hideTip();
-    SalvageReview(root,items,bag.shards,(ids,value)=>{
-      profile.commit(()=>AshenLoot.salvageSelection(profile.bag,ids,value));
+    SalvageReview(root,{item,rarities:catalog.rarities,getBag:()=>profile.bag},(ids,value,rule)=>{
+      profile.commit(()=>AshenLoot.salvageSelection(profile.bag,ids,value,rule));
     },(count,value)=>{
-      if(uid&&!itemFor(uid)){uid=null;focus="overview"}
+      if(uid&&!profile.bag.items.some(it=>it.uid===uid)){uid=null;focus="overview"}
       note="已分解 "+count+" 枚回响　·　获得 "+value+" 碎片";
       draw();
       const target=root.querySelector(".ar-selected[data-bag-uid]")||root.querySelector("[data-bag-uid]")||root.querySelector(".ar-slot");
@@ -127,8 +134,8 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     const origin=EchoIcon.origin(item);if(origin)box.append(tag(origin));
     const set=GoldStars.sets[item.goldStarId];
     if(set){
-      const count=equippedStars[set.key]||0;
-      box.append(subtitle("同名套装 · 已装 "+count+" 件"));
+      const count=equippedSets.stars[set.key]||0;
+      box.append(subtitle("同名套装 · 生效 "+count+" 件"));
       set.tiers.forEach((effect,i)=>{
         const need=2*(i+1),active=count>=need;
         box.append(el("p",(active?"已激活":"未激活")+" · "+need+" 件　"+effect,active?"ar-power":"ar-caption"));
@@ -371,9 +378,7 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
     const nav=el("div",undefined,"ar-nav"),prev=button("‹",()=>{page--;draw()}),next=button("›",()=>{page++;draw()});
     prev.dataset.focusKey="prev";next.dataset.focusKey="next";
     prev.setAttribute("aria-label","上一页");next.setAttribute("aria-label","下一页");prev.disabled=!page;next.disabled=page>=pages-1;
-    const candidates=bag.items.filter(item=>item.rank===0&&AshenLoot.canSalvage(bag,item));
-    const salvage=button("分解闲置 N 级",()=>reviewSalvage(candidates));
-    salvage.disabled=!candidates.length;
+    const salvage=button("一键分解",()=>reviewSalvage());
     nav.append(prev,tag("第 "+(page+1)+" / "+pages+" 页"),next,tag(list.length+" 件"),salvage);section.append(nav);return section;
   }
   function inspect(){
@@ -394,7 +399,8 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
           },on?"已卸下虚数体":"已装备 "+s.name),"primary"),
           button("取消预览",()=>{focus=on?"machine":"overview";previewRemoval=false;note="";draw()}));
       }
-      const matched=hero.disc.flatMap(id=>{const gear=itemFor(id);return gear?Echoes.lines(gear,s).filter(l=>l.boosted&&applies(l,s)):[]});
+      const effects=on?equippedSets:equippedEffects(s);
+      const matched=hero.disc.flatMap(id=>{const gear=itemFor(id);return gear?Echoes.lines(gear,s).filter(l=>l.boosted&&applies(l,s,gear,effects)):[]});
       pane.append(subtitle((on?"已加护词条":"可加护词条")+" · "+matched.length+" 条"));
       for(const line of matched)pane.append(el("div",(UI.stats[line.stat]||line.stat)+" "+valueText(line,line.value)+" → "+valueText(line,line.effective),"ar-lit"));
     }else if(focus==="echo"&&item){
@@ -422,7 +428,7 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
         });
         roll.dataset.forge="洗练";bar.append(choice,roll);
       }
-      if(AshenLoot.canSalvage(bag,item))bar.append(button("分解",()=>reviewSalvage([item])));
+      if(AshenLoot.canSalvage(bag,item))bar.append(button("分解",()=>reviewSalvage(item)));
       pane.append(bar);
     }else{
       pane.append(subtitle(focus==="hero"?"角色档案":"当前主位"));
@@ -480,7 +486,7 @@ globalThis.VaultView=function(root,back,characterId,catalog=CatalogStore.data,en
   }
   function draw(){
     hero=profile.hero;bag=profile.bag;
-    equippedStars=GoldStars.counts(bag.items.filter(it=>hero.disc.includes(it.uid)));
+    equippedSets=equippedEffects(active());
     dragEnd();hideTip();
     const focusKey=document.activeElement?.dataset?.focusKey;
     const shell=el("div",undefined,"arsenal"),head=el("div",undefined,"ar-banner"),name=el("div");

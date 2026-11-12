@@ -31,15 +31,6 @@ globalThis.GuardianArt=(()=>{
      for(let x=a+7+offset;x<b;x+=24){line(x-d*3,y-3,x,y,k.mid);line(x,y,x-d*3,y+3,k.mid)}
    }
  }
- function flame(x,y,r,h,t,k){
-   for(let j=-2;j<=2;j++){
-     const cx=x+j*r*.34,hot=h*(1-Math.abs(j)*.22)*(.89+.1*Math.sin(t*11+j));
-     const bend=Math.sin(t*9+j)*4;
-     for(let i=0;i<hot;i+=3){const q=i/hot,w=Math.max(1,(1-q)*(r*.44+1)),X=cx+bend*q*q;
-       rect(X-w,y-i-3,2*w,3,k.mid);if(q<.8)rect(X-w*.45,y-i-3,w*.75,3,k.lit)}
-   }
-   for(let i=0;i<7;i++){const q=(t*(quiet?.matches?0:.8)+i*.143)%1;rect(x+Math.sin(i*18+q*2)*r*(.5+q),y-3-q*(h+5),i%2+1,2,k.lit)}
- }
  function jag(x,y,r,h,k){
    for(let i=0;i<3;i++){const X=x+(i-1)*r*.52,H=h*(i===1?1:.63),w=r*(i===1?.48:.33);
      for(let j=0;j<H;j+=2){const a=j/H,half=Math.max(1,w*(1-a));rect(X-half+a*3,y-j-2,2*half,2,k.mid);rect(X-half+a*3,y-j-2,Math.max(1,half*.8),2,k.ink)}
@@ -51,13 +42,11 @@ globalThis.GuardianArt=(()=>{
    line(x-d*(len-3),y+tilt,x+d*len,y-tilt,k.mid,2);line(x,y,x+d*len,y-tilt,k.lit);
    line(x-d*len*.42-2,y+tilt*.42-4,x-d*len*.42+2,y+tilt*.42+4,k.lit,2);
  }
- function active(e,z,when){
-   const g=e.guard,k=g.kit,s=GuardianCombat.sample(z,when),x=px(s.x),floor=(z.type==="ember"?by(s.y):FLOOR)-1,r=px(z.r),h=px(z.h),y=by(s.y),d=Math.sign(z.to-z.from)||g.dir,t=s.u;
+ function active(e,z,when,g=e.guard){
+   const k=g.kit,s=GuardianCombat.sample(z,when),x=px(s.x),floor=(z.type==="ember"?by(s.y):FLOOR)-1,r=px(z.r),h=px(z.h),y=by(s.y),d=Math.sign(z.to-z.from)||g.dir,t=s.u;
    if(when<z.at){if(GuardianCombat.leaper(z.type))zoneMark(z,k,0);return}if(when>=z.at+z.dur)return;
    const spin=quiet?.matches?0:t;
    switch(z.type){
-     case "flame":flame(x,floor,r,px(s.h),spin,k);break;
-     case "ember":flame(x,floor,r,h+3,spin,k);for(let i=1;i<5;i++)rect(x-d*(r+i*3),floor-i%3-1,4,2,k.mid);break;
      case "spear":
        for(let i=0;i<3;i++){const Y=y+(i-1)*4;line(x-d*(r+9),Y+1,x+d*r,Y+1,k.ink,2);line(x-d*(r+3),Y,x+d*(r-(i===1?0:6)),Y,k.mid,2);rect(x+d*(r-(i===1?2:8)),Y-1,3,2,k.lit)}
        arc(x-d*6,y,4,8,0,tau,k.lit);break;
@@ -81,7 +70,8 @@ globalThis.GuardianArt=(()=>{
        if(!s.live){
          if(z.type==="phantom"){ctx.save();ctx.globalAlpha=g.frame?.37:.78;
            if(g.frame)ElementArt.body(e,x,floor-px(s.lift),{ghost:true,markers:false});
-           else SummonArt.drawActor(ctx,x,floor-px(s.lift),d<0,e.machine,g.height*.77,1,k.mid);
+           else if(e.machine)SummonArt.drawActor(ctx,x,floor-px(s.lift),d<0,e.machine,g.height*.77,1,k.mid);
+           else EffectLibrary.draw(ctx,"shadeAura",x,floor-px(s.lift),{age:when,width:34,dir:d,hostile:g.hostile});
            ctx.restore();stone(x,floor-px(s.lift)-12,3,9,k.mid,k.lit)}
          const lift=px(s.lift),cy=floor-lift-12;
          for(let i=0;i<4;i++){const a=spin*7+i*.96;arc(x,cy-i*6,18-i*2,4,a,a+3.7,i===0?k.lit:k.mid)}
@@ -93,27 +83,99 @@ globalThis.GuardianArt=(()=>{
        }break}
    }
  }
+  function signature(z,s,k,facing,hostile){
+    const x=s.x*SCALE,y=FLOOR-s.y*SCALE,r=s.r*SCALE,h=s.h*SCALE;
+    const u=s.u,dir=Math.sign(z.to-z.from)||facing;
+    switch(z.type){
+      case "flame":case "ember":{
+        for(let i=-1;i<=1;i++){
+          const height=h*(1-Math.abs(i)*.32),cx=x+i*r*.50,bend=Math.sin(u*9+i)*r*.33;
+          for(let layer=0;layer<3;layer++){
+            const left=[],right=[],hot=height*(1-layer*.18);
+            for(let j=0;j<=12;j++){
+              const v=j/12,mid=cx+Math.sin(v*8-u*13+i)*v*4+bend*v*v;
+              const w=(1-v)*r*(.37-layer*.085)*(.78+.22*Math.sin(v*12+u*9));
+              left.push([mid-w,y-hot*v]);right.push([mid+w,y-hot*v]);
+            }
+            PixelFX.fill([...left,...right.reverse()],k[1+layer]);
+          }
+          const spark=(u*1.6+(i+1)*.29)%1;
+          PixelFX.line(cx+bend,y-height*spark,cx+bend+1,y-height*spark-3,k[2],.65);
+        }
+        if(!globalThis.EffectLibrary?.draw(ctx,"burn",x,y,{age:u,width:2.1*r+9,height:h*1.16,hostile}))
+          PixelFX.stamp("fire",x,y,u,Math.min(h*1.15,2.1*r+9));
+        PixelFX.ribbon(x,y,r+2,4,u*3,3.9,2,k);break;
+      }
+      case "spear":case "sickle":{
+        if(!globalThis.EffectLibrary?.draw(ctx,"waterArrow",x,y,{age:u,width:Math.max(19,2*r),dir,hostile}))
+          PixelFX.stamp("water",x-dir*3,y+7,u,17,dir<0);
+        const a=dir>0?-1.45:1.65;
+        PixelFX.ribbon(x-dir*4,y,r,Math.max(6,h+3),a,2.9,4,k);
+        for(let i=0;i<3;i++){
+          const bx=x-dir*(11+4*i),by=y+Math.sin(u*13+i*2)*4;
+          PixelFX.line(bx,by,bx-dir*(5+i*2),by-i+1,k[2],.65);
+        }break;
+      }
+      case "rush":case "vortex":{
+        PixelFX.stamp("wind",x,y-s.lift*SCALE+2,u,2.3*r);
+        for(let i=0;i<3;i++){
+          const a=u*5+i*2.1,cy=y-s.lift*SCALE-5-i*5;
+          PixelFX.ribbon(x,cy,12+i*4,4+i,a,2.65,2.7,k);
+          const bx=x+Math.cos(a)*18,by=cy+Math.sin(a)*7;
+          PixelFX.fill([[bx-4,by+2],[bx,by-2],[bx+4,by-2],[bx+1,by+1]],k[2]);
+        }break;
+      }
+      case "halo":case "sword":{
+        if(z.type==="halo")for(let i=0;i<4;i++){
+          const a=u*tau+i*Math.PI*.5;
+          PixelFX.ribbon(x,y-h*.52,r,h*.54,a,1,4.5,k);
+          PixelFX.flare(x+Math.cos(a+1)*r,y-h*.52+Math.sin(a+1)*h*.54,3,k[3]);
+        }else{
+          PixelFX.stamp("cut",x,y+h,u,h*2.1,dir<0);
+          PixelFX.ribbon(x-dir*6,y,r,h,-1.3+u*.7,2.6,3.2,k);
+          PixelFX.flare(x+dir*r*.68,y-h,4,k[3]);
+        }break;
+      }
+      case "phantom":{
+        if(s.live){PixelFX.explosion(x,FLOOR-1,r,(u-.73)/.27*.47,k,"shade");break}
+        const cy=FLOOR-s.lift*SCALE-14;
+        PixelFX.ribbon(x,cy,15,8,u*7,4.5,3.5,k);
+        for(let i=0;i<4;i++){
+          const a=i*Math.PI*.5+u*5,bx=x+Math.cos(a)*19,by=cy+Math.sin(a)*8;
+          PixelFX.fill([[bx,by-3],[bx+2,by],[bx,by+3],[bx-1,by]],k[2]);
+        }
+      }
+    }
+  }
+ function drawZone(source,zone,age,g,colors,hostile){
+   if(zone.type!=="flame"&&zone.type!=="ember")active(source,zone,age,g);
+   if(age>=zone.at&&age<zone.at+zone.dur)signature(zone,SkillPatterns.sample(zone,age),colors,g.dir,hostile);
+ }
  function field(e){
    if(!e.hp)return;
    const g=e.guard,k=g.kit;
    if(g.frame)ElementArt.field(e);
-   if(g.zones[0]?.weapon){if(!g.frame)AtlasWeaponArt.field(e);return}
+   if(g.zones[0]?.weapon){
+     if(g.rig)AtlasWeaponArt.field(e);
+     else if(!g.frame)cast(e,{...g.pattern,age:e.phase==="warning"?g.age-g.warning:g.age},true);
+     return
+   }
    if(e.phase==="warning"){
      for(const z of g.zones)zoneMark(z,k,g.age);
-     const x=px(e.x),y=by(g.lift)-g.height-9,progress=Math.min(1,g.age/g.warning);
+     const x=px(e.x),y=by(GuardianCombat.lift(e))-g.height-9,progress=Math.min(1,g.age/g.warning);
      arc(x,y,11,6,0,tau,k.ink,2);arc(x,y,11,6,-Math.PI/2,-Math.PI/2+tau*progress,k.lit,2);
      stone(x,y+4,3,9,k.mid,k.lit);
      for(let j=0;j<4;j++){const a=(quiet?.matches?0:g.age*2)+j*Math.PI*.5,R=15-4*progress;
        rect(x+Math.cos(a)*R,y+Math.sin(a)*R*.56,2,2,k.mid)}
-   }else if(e.phase==="attack")for(const z of g.zones){
-     if(!g.frame||(z.type!=="flame"&&z.type!=="ember"))active(e,z,g.age);
-     if(g.frame&&g.age>=z.at&&g.age<z.at+z.dur)ElementArt.signature(e,z,GuardianCombat.sample(z,g.age));
+   }else if(e.phase==="attack"){
+     const colors=g.frame?.cfg.colors??[k.ink,k.mid,k.lit,k.lit];
+     for(const zone of g.zones)drawZone(e,zone,g.age,g,colors,true);
    }
  }
  function body(e,x,base,struck){
    const g=e.guard,k=g.kit;
    const squash=e.phase==="warning"?1-.035*Math.min(1,g.age/g.warning):1;
-   const y=base-px(g.lift);rect(x-g.height*.40,base-2,g.height*.8,3,"#24202d");
+   const y=base-px(GuardianCombat.lift(e));rect(x-g.height*.40,base-2,g.height*.8,3,"#24202d");
    SummonArt.drawActor(ctx,x,y,g.dir<0,e.machine||{ability:g.key},g.height,squash);
    for(let i=0;i<3;i++){
      const cx=px(GuardianCombat.partX(e,i)),py=by(GuardianCombat.partY(e,i,SCALE)),r=px(GuardianCombat.partRadius(e,i));
@@ -126,5 +188,22 @@ globalThis.GuardianArt=(()=>{
        if(weak){for(const side of [-1,1])line(cx+side*7,py+2,cx+side*10,py-2,k.lit)}}
    }
  }
- return {field,body};
+ const allied={ink:"#244c65",mid:"#60bcd0",lit:"#e1ffed"},hostileInk={ink:"#64313e",mid:"#e17162",lit:"#ffe3ac"};
+ function cast(source,pattern,hostile){
+   const k=hostile?hostileInk:allied,warning=pattern.age<0;
+   if(pattern.zones[0].weapon){
+     PixelFX.volley(pattern.zones,Math.max(0,pattern.age),warning,warning?1+pattern.age/pattern.warning:1,
+       z=>Ordnance.portablePort(source,z),
+       z=>Ordnance.path(z,Ordnance.portablePort(source,z)),()=>[k.ink,k.mid,k.lit,k.lit],SkillPatterns.weaponStyle(pattern.id));
+     return;
+   }
+   ctx.save();ctx.translate(0,-pattern.originY*SCALE);
+   const actor={kit:k,dir:pattern.dir,height:30,hostile},colors=[k.ink,k.mid,k.lit,k.lit];
+   for(const zone of pattern.zones){
+     if(warning)zoneMark(zone,k,pattern.age+pattern.warning);
+     else drawZone(source,zone,pattern.age,actor,colors,hostile);
+   }
+   ctx.restore();
+ }
+ return {field,body,cast};
 })();

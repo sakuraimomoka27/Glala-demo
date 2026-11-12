@@ -87,7 +87,7 @@ globalThis.CombatArt=(()=>{
     const t=Math.min(.999,e.age/e.life),frame=Math.floor(t*8),scale=e.radius*(reduced?.matches ? .78 : 1);
     const x=Math.round(e.x*SCALE),y=Math.round(FLOOR-e.y*SCALE);
     const hitClip=hitClips[e.txt];
-    if(hitClip&&EffectLibrary.draw(ctx,hitClip,x,y,{progress:t,width:40*scale,dir:e.dir,alpha:Math.min(1,(1-t)*4)})){
+    if(hitClip&&EffectLibrary.draw(ctx,hitClip,x,y,{progress:t,width:40*scale,dir:e.dir,hostile:e.hostile,alpha:Math.min(1,(1-t)*4)})){
       if(e.txt==="core")PixelFX.stamp("fire",x,y+6,t,42*scale,e.dir<0);
       return;
     }
@@ -97,7 +97,7 @@ globalThis.CombatArt=(()=>{
     ctx.globalAlpha=t>.73?Math.max(0,(1-t)/.27):1;
     ctx.drawImage(contactCell(e.txt,frame),-40,-40,80,80);ctx.restore();
   }
-  const hitClips={stomp:"stompHit",core:"stompHit",shot:"waterHit",shadow:"shadeStrike",burn:"burn",slash:"slash",blade:"waterHit"};
+  const hitClips={stomp:"stompHit",core:"stompHit",shot:ProjectileEffects.definitions.shot.impactClip,shadow:"shadeStrike",burn:"burn",slash:"slash",blade:"waterHit"};
   const plumeTiming={
     takeoffCloud:[.08,.22,.43,.65,.84,1],landingCloud:[.11,.27,.51,.73,.89,1]
   };

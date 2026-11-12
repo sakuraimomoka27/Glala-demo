@@ -46,9 +46,9 @@ globalThis.FieldArt=(()=>{
   }
   // Build the same pixel-cut ribbons used by machine weapons once per phase.
   // An overlapping crowd then costs a single draw per active weapon.
-  function stroke(ink,index){
-    const key=ink+index;if(strokes.has(key))return strokes.get(key);
-    const c=document.createElement("canvas");c.width=88;c.height=56;const g=c.getContext("2d"),colors=palettes[ink];
+  function stroke(ink,index,colors=palettes[ink]){
+    const key=colors[0]+ink+index;if(strokes.has(key))return strokes.get(key);
+    const c=document.createElement("canvas");c.width=88;c.height=56;const g=c.getContext("2d");
     g.scale(2,2);const t=index/5;
     if(ink==="stone"){
       for(let i=0;i<5;i++){
@@ -72,27 +72,28 @@ globalThis.FieldArt=(()=>{
     const r=1+Math.floor(p*2);ctx.fillRect(5-r,-9,2*r+1,1);ctx.fillRect(5,-9-r,1,2*r+1);
     ctx.restore();
   }
-  function cues(e,x,y){
-    const c=FieldCombat.profile(e.id,e.kind),color=palettes[c.ink],reach=e.headHeight?(c.fullReach??c.reach):c.reach;
+  function cues(e,x,y,hostile=true){
+    const c=FieldCombat.attackProfile(e),color=hostile?palettes[c.ink]:["#264555","#4a8aaa","#94d8e5","#f0ffed"];
+    const reach=e.headHeight?(c.fullReach??c.reach):c.reach;
     if(e.swing==="tell")warning(x,y,e.swingDir,reach,clamp(1-e.swingTime/c.windup),color);
-    if(e.swing==="cut"){
+    if(e.swing==="cut"&&(!e.swingSkill||e.swingSkill===c.skill)){
       const t=clamp(1-e.swingTime/c.active);
       const height=e.headHeight?29:20;
       const width=reach*SCALE*1.13,stone=c.ink==="stone";
       const drawn=c.ink!=="claw"&&globalThis.EffectLibrary?.draw(ctx,stone?"shockwave":"slash",
         x+e.swingDir*width*.46,stone?y:y-height*.42,
-        {progress:t,width,height:height*(stone?1.65:1.35),dir:e.swingDir,hostile:true});
+        {progress:t,width,height:height*(stone?1.65:1.35),dir:e.swingDir,hostile});
       if(!drawn){
         ctx.save();ctx.translate(x,y);ctx.scale(e.swingDir,1);
-        ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6))),0,-height+3,width,height);ctx.restore();
+        ctx.drawImage(stroke(c.ink,Math.min(5,Math.floor(t*6)),color),0,-height+3,width,height);ctx.restore();
       }
     }
-    if(e.kind==="bow"||e.id==="watcher"){
-      const compact=!e.headHeight&&e.id!=="watcher",yy=y-(compact?.42:c.portY)*SCALE;
+    if(c.draw){
+      const compact=!e.headHeight&&!c.fixedPort,yy=y-(compact?.42:c.portY)*SCALE;
       const d=e.aimDir||(e.release>0?e.shotDir:0);if(!d)return;
       const start=x+(compact?0:d*c.portX*SCALE);
       if(e.aimDir){
-        const t=clamp(1-e.aim/c.draw),end=e.id==="watcher"?41:22;
+        const t=clamp(1-e.aim/c.draw),end=c===FieldCombat.profiles.watcher?41:22;
         ctx.fillStyle=color[1];for(let i=3;i<=end;i+=5)ctx.fillRect(Math.round(start+d*i),Math.round(yy),2,.5);
         ctx.fillStyle=color[2];ctx.fillRect(start-1,yy-1,2,2);if(t>.5){ctx.fillRect(start-2,yy,5,.7);ctx.fillRect(start,yy-2,.7,4)}
       }else if(e.release>.07){
@@ -102,7 +103,7 @@ globalThis.FieldArt=(()=>{
     }
   }
   function projectile(a){
-    const x=Math.round(a.x*SCALE),y=Math.round(FLOOR-a.y*SCALE),colors=palettes[a.ink]||palettes.arrow;
+    const x=Math.round(a.x*SCALE),y=Math.round(FLOOR-a.y*SCALE),colors=a.hostile===false?["#264555","#4a8aaa","#94d8e5","#f0ffed"]:(palettes[a.ink]||palettes.arrow);
     ctx.save();ctx.translate(x,y);ctx.scale(a.dir,1);
     const trail=Math.min(a.ink==="pulse"?19:12,Math.round(a.age*a.speed*SCALE));
     ctx.fillStyle=colors[1];ctx.fillRect(-trail,-.5,trail,1);
@@ -121,7 +122,11 @@ globalThis.FieldArt=(()=>{
   }
   function hit(effect){
     const t=effect.age/effect.life,ink=effect.txt==="pulse"?"pulse":"arrow";
-    PixelFX.stamp(ink==="pulse"?"fire":"cut",effect.x*SCALE,FLOOR-effect.y*SCALE+4,t,13*(1-t*.4));
+    const x=Math.round(effect.x*SCALE),y=Math.round(FLOOR-effect.y*SCALE);
+    PixelFX.stamp(ink==="pulse"?"fire":"cut",x,y+4,t,13*(1-t*.4));
+    const r=Math.max(1,Math.round(4*(1-t)));
+    ctx.fillStyle=effect.hostile===false?"#94d8e5":palettes[ink][2];
+    ctx.fillRect(x-r,y,r*2+1,1);ctx.fillRect(x,y-r,1,r*2+1);
   }
   return {sheet,preload,sprite,draw,cues,projectile,watcher,hit};
 })();

@@ -113,7 +113,7 @@ globalThis.ElementArt=(()=>{
     const g=e.guard,f=g.frame,warning=e.phase==="warning",k=f.cfg.colors;
     if(g.zones[0]?.weapon){
       PixelFX.volley(g.zones,g.age,warning,Math.min(1,g.age/g.warning),z=>ElementFrame.port(e,z),z=>ElementFrame.path(e,z),()=>k,
-        e.machine.id==="hecate"?"shade":e.machine.id==="mnemosyne"?"wind":"");
+        SkillPatterns.weaponStyle(g.move[2])??(SkillPatterns.weapons[g.move[2]]?SkillPatterns.weaponStyle(f.cfg.special[2]):undefined));
       return;
     }
     const p=ElementFrame.world(e,f.pose.tip),x=p.x*SCALE,y=FLOOR-p.y*SCALE;
@@ -126,69 +126,5 @@ globalThis.ElementArt=(()=>{
       PixelFX.ribbon(x,y,14+9*u,9+5*u,s+u*3,.95,3,k);
     }
   }
-  function signature(e,z,s){
-    const k=e.guard.frame.cfg.colors,x=s.x*SCALE,y=FLOOR-s.y*SCALE,r=s.r*SCALE,h=s.h*SCALE;
-    const u=s.u,dir=Math.sign(z.to-z.from)||e.guard.dir,tau=Math.PI*2;
-    switch(z.type){
-      case "flame":case "ember":{
-        for(let i=-1;i<=1;i++){
-          const height=h*(1-Math.abs(i)*.32),cx=x+i*r*.50,bend=Math.sin(u*9+i)*r*.33;
-          for(let layer=0;layer<3;layer++){
-            const left=[],right=[],hot=height*(1-layer*.18);
-            for(let j=0;j<=12;j++){
-              const v=j/12,mid=cx+Math.sin(v*8-u*13+i)*v*4+bend*v*v;
-              const w=(1-v)*r*(.37-layer*.085)*(.78+.22*Math.sin(v*12+u*9));
-              left.push([mid-w,y-hot*v]);right.push([mid+w,y-hot*v]);
-            }
-            PixelFX.fill([...left,...right.reverse()],k[1+layer]);
-          }
-          const spark=(u*1.6+(i+1)*.29)%1;
-          PixelFX.line(cx+bend,y-height*spark,cx+bend+1,y-height*spark-3,k[2],.65);
-        }
-        if(!globalThis.EffectLibrary?.draw(ctx,"burn",x,y,{age:u,width:2.1*r+9,height:h*1.16,hostile:true}))
-          PixelFX.stamp("fire",x,y,u,Math.min(h*1.15,2.1*r+9));
-        PixelFX.ribbon(x,y,r+2,4,u*3,3.9,2,k);break;
-      }
-      case "spear":case "sickle":{
-        if(!globalThis.EffectLibrary?.draw(ctx,"waterArrow",x,y,{age:u,width:Math.max(19,2*r),dir,hostile:true}))
-          PixelFX.stamp("water",x-dir*3,y+7,u,17,dir<0);
-        const a=dir>0?-1.45:1.65;
-        PixelFX.ribbon(x-dir*4,y,r,Math.max(6,h+3),a,2.9,4,k);
-        for(let i=0;i<3;i++){
-          const bx=x-dir*(11+4*i),by=y+Math.sin(u*13+i*2)*4;
-          PixelFX.line(bx,by,bx-dir*(5+i*2),by-i+1,k[2],.65);
-        }break;
-      }
-      case "rush":case "vortex":{
-        PixelFX.stamp("wind",x,y-s.lift*SCALE+2,u,2.3*r);
-        for(let i=0;i<3;i++){
-          const a=u*5+i*2.1,cy=y-s.lift*SCALE-5-i*5;
-          PixelFX.ribbon(x,cy,12+i*4,4+i,a,2.65,2.7,k);
-          const bx=x+Math.cos(a)*18,by=cy+Math.sin(a)*7;
-          PixelFX.fill([[bx-4,by+2],[bx,by-2],[bx+4,by-2],[bx+1,by+1]],k[2]);
-        }break;
-      }
-      case "halo":case "sword":{
-        if(z.type==="halo")for(let i=0;i<4;i++){
-          const a=u*tau+i*Math.PI*.5;
-          PixelFX.ribbon(x,y-h*.52,r,h*.54,a,1,4.5,k);
-          PixelFX.flare(x+Math.cos(a+1)*r,y-h*.52+Math.sin(a+1)*h*.54,3,k[3]);
-        }else{
-          PixelFX.stamp("cut",x,y+h,u,h*2.1,dir<0);
-          PixelFX.ribbon(x-dir*6,y,r,h,-1.3+u*.7,2.6,3.2,k);
-          PixelFX.flare(x+dir*r*.68,y-h,4,k[3]);
-        }break;
-      }
-      case "phantom":{
-        if(s.live){PixelFX.explosion(x,FLOOR-1,r,(u-.73)/.27*.47,k,"shade");break}
-        const cy=FLOOR-s.lift*SCALE-14;
-        PixelFX.ribbon(x,cy,15,8,u*7,4.5,3.5,k);
-        for(let i=0;i<4;i++){
-          const a=i*Math.PI*.5+u*5,bx=x+Math.cos(a)*19,by=cy+Math.sin(a)*8;
-          PixelFX.fill([[bx,by-3],[bx+2,by],[bx,by+3],[bx-1,by]],k[2]);
-        }
-      }
-    }
-  }
-  return {configure,begin,body,field,signature};
+  return {configure,begin,body,field};
 })();
